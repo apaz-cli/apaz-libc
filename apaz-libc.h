@@ -9,10 +9,13 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "list.h/list.h"
-#include "string.h/string.h"
 #include "memdebug.h/memdebug.h"
+
 #include "threadpool.h/threadpool.h"
+
+#include "list.h/list.h"
+
+#include "string.h/string.h"
 
 /*******************/
 /* LIBRARY INTEROP */
