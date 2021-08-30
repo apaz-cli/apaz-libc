@@ -12,12 +12,21 @@
    * be freed with List_##type##_destroy(), as it is allocated in a clever way \
    * by malloc(). Do not call free() on any List_##type.                       \
    */                                                                          \
-  static inline List_##type List_##type##_new(size_t capacity) {               \
+  static inline List_##type List_##type##_new_cap(size_t capacity) {           \
     void *vptr = malloc(sizeof(size_t) * 2 + sizeof(type) * capacity);         \
     size_t *stptr = (size_t *)vptr;                                            \
     *stptr = 0;                                                                \
     stptr += 1;                                                                \
     *stptr = capacity;                                                         \
+    stptr += 1;                                                                \
+    return (List_##type)stptr;                                                 \
+  }                                                                            \
+  static inline List_##type List_##type##_new_len(size_t len) {                \
+    void *vptr = malloc(sizeof(size_t) * 2 + sizeof(type) * len);              \
+    size_t *stptr = (size_t *)vptr;                                            \
+    *stptr = len;                                                              \
+    stptr += 1;                                                                \
+    *stptr = len;                                                              \
     stptr += 1;                                                                \
     return (List_##type)stptr;                                                 \
   }                                                                            \
@@ -27,7 +36,7 @@
    */                                                                          \
   static inline List_##type List_##type##_new_of(                              \
       type *items, size_t num_items, size_t capacity) {                        \
-    List_##type nl = List_##type##_new(capacity);                              \
+    List_##type nl = List_##type##_new_cap(capacity);                          \
     for (size_t i = 0; i < num_items; i++)                                     \
       nl[i] = items[i];                                                        \
     return nl;                                                                 \
@@ -72,8 +81,9 @@
     List_##type##_resize(list, List_##type##_len(list));                       \
   }                                                                            \
   static inline List_##type List_##type##_clone(List_##type to_clone) {        \
-    List_##type nl = List_##type##_new(List_##type##_len(to_clone));           \
-    for (size_t i = 0; i < List_##type##_len(to_clone); i++)                   \
+    size_t new_len = List_##type##_len(to_clone);                              \
+    List_##type nl = List_##type##_new_len(new_len);                           \
+    for (size_t i = 0; i < new_len; i++)                                       \
       nl[i] = to_clone[i];                                                     \
     return nl;                                                                 \
   }                                                                            \
@@ -104,6 +114,11 @@
   static inline type *List_##type##_peek(List_##type list) {                   \
     return list + (List_##type##_len(list) - 1);                               \
   }                                                                            \
+  static inline List_##type List_##type##_sublist(List_##type list,            \
+                                                  size_t from, size_t to) {    \
+    /* TODO Figure out asserts. */                                             \
+    return list;                                                               \
+  }                                                                            \
                                                                                \
   /* For fear of redefinition below, define filter and foreach here. */        \
                                                                                \
@@ -122,11 +137,14 @@
     List_##type##_destroy(list);                                               \
   }
 
+// TODO figure out how to get zip() working.
+// TODO cross product
+// TODO sort
+
 #define LIST_DEFINE_MONAD(type, map_type)                                      \
   static inline List_##map_type List_##type##_map_to_##map_type(               \
       List_##type list, map_type (*mapper)(type, void *), void *extra_data) {  \
-    /* TODO Add case for sizeof(type)==sizeof(map_type) */                     \
-    List_##map_type nl = List_##map_type##_new(List_##type##_len(list));       \
+    List_##map_type nl = List_##map_type##_new_len(List_##type##_len(list));   \
     for (size_t i = 0; i < List_##type##_len(list); i++)                       \
       nl[i] = mapper(list[i], extra_data);                                     \
     List_##type##_destroy(list);                                               \
@@ -136,7 +154,7 @@
       List_##type list, List_##map_type (*mapper)(type, void *),               \
       void *extra_data) {                                                      \
     size_t nll_len = List_##type##_len(list), size_sum = 0;                    \
-    List_List_##map_type nll = List_List_##map_type##_new(nll_len);            \
+    List_List_##map_type nll = List_List_##map_type##_new_len(nll_len);        \
     for (size_t i = 0; i < nll_len; i++) {                                     \
       List_##map_type ml = mapper(list[i], extra_data);                        \
       nll_len += List_##map_type##_len(ml);                                    \
@@ -144,7 +162,7 @@
     }                                                                          \
     /* TODO Optimize with buffer re-use if possible.*/                         \
     /* TODO Debate using a VLA in place of nll. */                             \
-    List_##map_type retlist = List_##map_type##_new(size_sum);                 \
+    List_##map_type retlist = List_##map_type##_new_len(size_sum);             \
     for (size_t i = 0; i < nll_len; i++)                                       \
       for (size_t j = 0; j < List_##map_type##_len(nll[i]); j++)               \
         retlist[j] = nll[i][j];                                                \

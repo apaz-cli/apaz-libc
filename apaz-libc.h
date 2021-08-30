@@ -1,6 +1,7 @@
 #ifndef COMMON_INCLUDES
 #define COMMON_INCLUDES
 
+#include <assert.h>
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stdint.h>

@@ -88,14 +88,14 @@ static inline int mutex_destroy(mutex_t* mutex) { return pthread_mutex_destroy(m
 #define __INCLUDED_MEMDEBUG
 
 #ifndef MEMDEBUG
-#define MEMDEBUG 1
+#define MEMDEBUG 0
 #endif
 
 // PRINT_MEMALLOCS is used to control debug error messages for every allocation.
 // Still wraps malloc() and tracks allocations for print_heap() if this is off.
 #if MEMDEBUG
 #ifndef PRINT_MEMALLOCS
-#define PRINT_MEMALLOCS 1
+#define PRINT_MEMALLOCS 0
 #endif
 #endif
 

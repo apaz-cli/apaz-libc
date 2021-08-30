@@ -20,18 +20,15 @@ A drop-in replacement for `malloc` that wraps `malloc()`, `realloc()`, and `free
 
 ## Example usage: 
 ```c
-#include <stdio.h>
-#include <stdlib.h>
-
-// #define MEMDEBUG to one to enable wrapping malloc(), realloc(), and free().
+// #define MEMDEBUG to 1 to enable wrapping malloc(), realloc(), and free().
 // Allocations will be tracked, so they can be printed out with print_heap().
-// If you #define MEMDEBUG to zero, print_heap() and wrapping will be defined 
-// nothing and/or optimized out completely by the compiler.
+// #define MEMDEBUG to 0, and print_heap() and memory management function 
+// wrapping will be defined away and optimized out completely.
 
-// #define PRINT_MEMALLOCS to one to print a message on each call to 
+// #define PRINT_MEMALLOCS to 1 to print a message on each call to 
 // malloc(), realloc(), and free().
-// #define PRINT_MEMALLOCS to zero if you want to still track allocations for
-// print_heap, but don't want to spam the terminal with messages.
+// #define PRINT_MEMALLOCS to 0 if you want to still track allocations for
+// print_heap(), but don't want to spam the terminal with messages.
 
 #define MEMDEBUG 1
 #define PRINT_MEMALLOCS 1
@@ -93,7 +90,6 @@ A minimal threadpool implemented from scratch in C using `pthread`s.
 
 ## Example Usage:
 ```c
-#include <stdio.h>
 #include "apaz-libc/apaz-libc.h"
 
 void say_hello(void* voidptr) {
@@ -154,3 +150,84 @@ Hello from task #317.
 
 
 Note that the pool uses a stack data structure for its tasks, not a queue. This choice was made after some testing. It's less "fair," but it's faster for cache locality reasons. I decided to go the faster route, but it should be noted that should this be undesireable, it can be changed with some very minor modifications to the code.
+
+<br>
+
+# list.h <a name="list.h"></a>
+
+A monadic list library utilizing fat pointers to retain `[]` syntax.
+
+
+## Example Usage:
+```c
+#include "apaz-libc.h"
+
+static inline size_t factorial(size_t x, void *extra_data) {
+  return x ? x * factorial(x - 1, extra_data) : 1;
+}
+
+static inline void print_size_t(size_t to_print, void *extra_data) {
+  printf("%zu\n", to_print);
+}
+
+// This macro declares all the functionality of a list of the given type.
+LIST_DEFINE(size_t);
+// You can easily define lists of lists.
+LIST_DEFINE(List_size_t);
+// This is the fun part. (original type, map to type)
+LIST_DEFINE_MONAD(size_t, size_t);
+
+int main() {
+  // The type of the list is List_##type, as provided to LIST_DEFINE. There
+  // are a bunch of ways to define a list, they all have _new in their name.
+  List_size_t list = List_size_t_new_len(10);
+
+  // It's just a size_t*. You can use it as such.
+  for (size_t i = 0; i < List_size_t_len(list); i++)
+    list[i] = i;
+
+  // Add new elements whenever you want, and it will grow to meet demand.
+  // There are two syntaxes for this, whichever you prefer.
+  List_size_t_add(&list, 11);
+  list = List_size_t_addeq(list, 12);
+
+  // You can also peek and pop.
+  size_t peeked = *List_size_t_peek(list);
+  List_size_t_pop(list);
+
+  // You can clone lists too.
+  // Lists are heap allocated, so destroy them when you're done with them.
+  // Don't try to use normal free() through. Use List_##type##_destroy() instead.
+  List_size_t cloned = List_size_t_clone(list);
+  List_size_t_destroy(list);
+
+  // Lists also support operations like map(), filter(), flatmap(), and
+  // foreach().
+  // These operations destroy the list passed to them, and if they return a new
+  // list they re-use the space allocated for the old one where possible.
+  cloned = List_size_t_map_to_size_t(cloned, factorial, NULL);
+  List_size_t_foreach(cloned, print_size_t, NULL);
+}
+```
+
+## Output
+```
+1
+1
+2
+6
+24
+120
+720
+5040
+40320
+362880
+39916800
+```
+
+# string.h <a name="list.h"></a>
+
+A string library that utilizes fat pointers to retain the `[]` syntax for accessing characters, but also stores length information.
+
+
+## Example Usage:
