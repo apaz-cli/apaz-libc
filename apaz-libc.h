@@ -16,13 +16,13 @@
 
 #include "list.h/list.h"
 
-#include "string.h/string.h"
+#include "apaz-string.h/apaz-string.h"
 
 /*******************/
 /* LIBRARY INTEROP */
 /*******************/
 
-// Provide conversion between strings and lists
+// Provide conversion between strings and lists of char.
 
 LIST_DEFINE(char);
 LIST_DEFINE(List_char);

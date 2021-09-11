@@ -1,8 +1,13 @@
 
 #ifndef STRUTIL_INCLUDE
 #define STRUTIL_INCLUDE
+
+#include "variadic.h"
+
+#include <cstddef>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
@@ -46,7 +51,6 @@ static inline String String_resize(String str, size_t new_size) {
 
 static inline void String_destroy(String str) { free(str - sizeof(size_t)); }
 
-#include "variadic.h"
 #define STRING_DESTROY_(str) free(str - sizeof(size_t));
 #define STRING_DESTROY(...) __EVAL(__MAP(STRING_DESTROY_, __VA_ARGS__))
 
@@ -67,7 +71,9 @@ static inline String String_add(String str1, String str2) {
   return ns;
 }
 
-static inline String String_add_equals(String base, String to_append) {
+// Returns str1+str2, destroying both and returning a new string.
+// Probably will re-use str1's memory.
+static inline String String_add_destroy(String base, String to_append) {
   size_t blen = String_len(base), alen = String_len(to_append);
   size_t nlen = blen + alen;
   base = String_resize(base, nlen);
@@ -106,6 +112,40 @@ static inline void String_print(String str) {
 static inline void String_println(String str) {
   printf("%s\n", str);
   fflush(stdout);
+}
+
+static inline size_t __apaz_string_strlen(char *str) {
+  register const char *s;
+  for (s = str; *s; ++s)
+    ;
+  return (s - str);
+}
+
+static inline bool String_equals(String str, char *seq) {
+  // Compare until mismatch or on at least one null terminator.
+  while (*str && (*str == *seq)) {
+    str++;
+    seq++;
+  }
+  // If mismatch, return false. On null, return if both are null.
+  return *str == *seq;
+}
+
+static inline bool String_startsWith(String str, char *prefix) {
+  while (*prefix) {
+    if (*prefix++ != *str++)
+      return false;
+  }
+  return true;
+}
+
+static inline bool String_endsWith(String str, char *suffix) {
+  size_t len1 = String_len(str);
+  size_t len2 = __apaz_string_strlen(suffix);
+  if (len1 < len2)
+    return 0;
+  str += (len1 - len2);
+  return String_equals(str, suffix);
 }
 
 #endif // STRUTIL_INCLUDE
