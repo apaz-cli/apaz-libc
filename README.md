@@ -10,7 +10,7 @@ This library is composed of 4 other libraries, with more to come.
 * [memdebug.h](#memdebug.h)
 * [threadpool.h](#threadpool.h)
 * [list.h](#list.h)
-* [string.h](#string.h)
+* [apaz-string.h](#apaz-string.h)
 
 <br/>
 
@@ -160,7 +160,7 @@ A monadic list library utilizing fat pointers to retain `[]` syntax.
 
 ## Example Usage:
 ```c
-#include "apaz-libc.h"
+#include <apaz-libc.h>
 
 static inline size_t factorial(size_t x, void *extra_data) {
   return x ? x * factorial(x - 1, extra_data) : 1;
@@ -225,7 +225,7 @@ int main() {
 39916800
 ```
 
-# string.h <a name="list.h"></a>
+# apaz-string.h <a name="apaz-string.h"></a>
 
 A string library that utilizes fat pointers to retain the `[]` syntax for accessing characters, but also stores length information.
 
