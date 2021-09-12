@@ -1,5 +1,5 @@
 
-#include "apaz-libc.h"
+#include <apaz-libc.h>
 
 static inline size_t factorial(size_t x, void *extra_data) {
   return x ? x * factorial(x - 1, extra_data) : 1;

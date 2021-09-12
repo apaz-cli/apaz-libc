@@ -141,7 +141,7 @@
                                                                                \
   /* For fear of redefinition below, define filter and foreach here. */        \
                                                                                \
-  static inline List_##type List_##type##filter(                               \
+  static inline List_##type List_##type##_filter(                               \
       List_##type list, bool (*filter_fn)(type, void *), void *extra_data) {   \
     /* Since the list would be destroyed anyway, it can be reused. */          \
     for (size_t i = 0, retained = 0; i < List_##type##_len(list); i++)         \
@@ -149,6 +149,7 @@
         list[retained++] = list[i];                                            \
     return list;                                                               \
   }                                                                            \
+                                                                               \
   static inline void List_##type##_foreach(                                    \
       List_##type list, void (*action_fn)(type, void *), void *extra_data) {   \
     for (size_t i = 0; i < List_##type##_len(list); i++)                       \
