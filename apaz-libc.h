@@ -53,6 +53,18 @@ static inline String List_char_to_String(List_char list) {
   return s;
 }
 
+static inline void List_String_print(List_String strlist) {
+  size_t len = List_String_len(strlist);
+  putchar('[');
+  if (len) {
+    printf("%s", strlist[0]);
+    for (size_t i = 1; i < len; i++) {
+      printf(", %s", strlist[i]);
+    }
+  }
+  puts("]\n");
+}
+
 // Does not destroy the string passed.
 static inline List_String String_split(String str, char *delim) {
   size_t len = String_len(str);
