@@ -114,24 +114,25 @@ static inline void String_println(String str) {
   fflush(stdout);
 }
 
-static inline size_t __apaz_string_strlen(char *str) {
+static inline size_t apaz_strlen(char *str) {
   register const char *s;
   for (s = str; *s; ++s)
     ;
   return (s - str);
 }
 
-static inline bool String_equals(String str, char *seq) {
+static inline bool apaz_str_equals(char *str, char *seq) {
   // Compare until mismatch or on at least one null terminator.
   while (*str && (*str == *seq)) {
     str++;
     seq++;
   }
-  // If mismatch, return false. On null, return if both are null.
+  // If one is null and not the other, return false.
+  // Otherwise, return true.
   return *str == *seq;
 }
 
-static inline bool String_startsWith(String str, char *prefix) {
+static inline bool apaz_str_startsWith(char *str, char *prefix) {
   while (*prefix) {
     if (*prefix++ != *str++)
       return false;
@@ -139,9 +140,31 @@ static inline bool String_startsWith(String str, char *prefix) {
   return true;
 }
 
+static inline char *apaz_strstr(char *str, char *subseq) {
+  while (*str) {
+    if (!apaz_str_equals(str, subseq))
+      return str;
+    ++str;
+  }
+  return NULL;
+}
+
+
+static inline bool apaz_str_contains(char *str, char *subseq) {
+  return apaz_strstr(str, subseq) == NULL ? false : true;
+}
+
+static inline bool String_equals(String str, char *seq) {
+  return apaz_str_equals(str, seq);
+}
+
+static inline bool String_startsWith(String str, char *prefix) {
+  return apaz_str_startsWith(str, prefix);
+}
+
 static inline bool String_endsWith(String str, char *suffix) {
   size_t len1 = String_len(str);
-  size_t len2 = __apaz_string_strlen(suffix);
+  size_t len2 = apaz_strlen(suffix);
   if (len1 < len2)
     return 0;
   str += (len1 - len2);

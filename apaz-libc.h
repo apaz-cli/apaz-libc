@@ -1,9 +1,14 @@
 #ifndef COMMON_INCLUDES
 #define COMMON_INCLUDES
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <assert.h>
 #include <inttypes.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,7 +39,7 @@ LIST_DEFINE_MONAD(char, String);
 LIST_DEFINE_MONAD(String, char);
 
 // Destroys the string passed.
-static inline List_char String_to_charList(String str) {
+static inline List_char String_to_List_char(String str) {
   size_t n = String_len(str);
   List_char strl = List_char_new_of(str, n, n);
   String_destroy(str);
@@ -48,4 +53,26 @@ static inline String List_char_to_String(List_char list) {
   return s;
 }
 
+// Does not destroy the string passed.
+static inline List_String String_split(String str, char *delim) {
+  size_t len = String_len(str);
+  size_t delim_len = apaz_strlen(delim);
+
+  List_String sl = List_String_new_cap(10);
+
+  while (true) {
+    char *match = apaz_strstr(str, delim);
+    if (match) {
+      ptrdiff_t diff = match - str;
+      sl = List_String_addeq(sl, String_new_of(str, (size_t)diff));
+    } else
+      break;
+  }
+
+  return sl;
+}
+
+#ifdef __cplusplus
+}
+#endif
 #endif // COMMON_INCLUDES

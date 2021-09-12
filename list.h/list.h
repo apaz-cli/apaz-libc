@@ -7,10 +7,24 @@
 
 #define LIST_DEFINE(type)                                                      \
   typedef type *List_##type;                                                   \
+                                                                               \
+  /* Builtin Utility Functions */                                              \
+                                                                               \
+  static inline void __List_##type##_setlen(List_##type list,                  \
+                                            size_t new_len) {                  \
+    *(((size_t *)list) - 2) = new_len;                                         \
+  }                                                                            \
+  static inline void __List_##type##_setcap(List_##type list,                  \
+                                            size_t new_cap) {                  \
+    *(((size_t *)list) - 1) = new_cap;                                         \
+  }                                                                            \
+                                                                               \
   /**                                                                          \
    * Constructs a new list of the specified capacity. The returned list must   \
    * be freed with List_##type##_destroy(), as it is allocated in a clever way \
    * by malloc(). Do not call free() on any List_##type.                       \
+   *                                                                           \
+   * The list returned has current size 0.                                     \
    */                                                                          \
   static inline List_##type List_##type##_new_cap(size_t capacity) {           \
     void *vptr = malloc(sizeof(size_t) * 2 + sizeof(type) * capacity);         \
@@ -21,6 +35,14 @@
     stptr += 1;                                                                \
     return (List_##type)stptr;                                                 \
   }                                                                            \
+                                                                               \
+  /**                                                                          \
+   * Constructs a new list of the specified capacity. The returned list must   \
+   * be freed with List_##type##_destroy(), as it is allocated in a clever way \
+   * by malloc(). Do not call free() on any List_##type.                       \
+   *                                                                           \
+   * The list returned has current size len.                                   \
+   */                                                                          \
   static inline List_##type List_##type##_new_len(size_t len) {                \
     void *vptr = malloc(sizeof(size_t) * 2 + sizeof(type) * len);              \
     size_t *stptr = (size_t *)vptr;                                            \
@@ -30,17 +52,22 @@
     stptr += 1;                                                                \
     return (List_##type)stptr;                                                 \
   }                                                                            \
+                                                                               \
   /**                                                                          \
    * Constructs a new list of the specified capacity, using num_items many     \
    * members from the passed buffer.                                           \
+   *                                                                           \
+   * The list returned has current size num_items.                             \
    */                                                                          \
   static inline List_##type List_##type##_new_of(                              \
       type *items, size_t num_items, size_t capacity) {                        \
     List_##type nl = List_##type##_new_cap(capacity);                          \
     for (size_t i = 0; i < num_items; i++)                                     \
       nl[i] = items[i];                                                        \
+    __List_##type##_setlen(nl, num_items);                                     \
     return nl;                                                                 \
   }                                                                            \
+                                                                               \
   /**                                                                          \
    * This function realloc()s the list. The new list retains its length if the \
    * new capacity is greater than or equal to the old length, but items are    \
@@ -66,16 +93,8 @@
   static inline size_t List_##type##_len(List_##type list) {                   \
     return *(((size_t *)list) - 2);                                            \
   }                                                                            \
-  static inline void __List_##type##_setlen(List_##type list,                  \
-                                            size_t new_len) {                  \
-    *(((size_t *)list) - 2) = new_len;                                         \
-  }                                                                            \
   static inline size_t List_##type##_cap(List_##type list) {                   \
     return *(((size_t *)list) - 1);                                            \
-  }                                                                            \
-  static inline void __List_##type##_setcap(List_##type list,                  \
-                                            size_t new_cap) {                  \
-    *(((size_t *)list) - 1) = new_cap;                                         \
   }                                                                            \
   static inline void List_##type##_trim(List_##type list) {                    \
     List_##type##_resize(list, List_##type##_len(list));                       \
