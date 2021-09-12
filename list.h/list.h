@@ -141,10 +141,11 @@
                                                                                \
   /* For fear of redefinition below, define filter and foreach here. */        \
                                                                                \
-  static inline List_##type List_##type##_filter(                               \
+  static inline List_##type List_##type##_filter(                              \
       List_##type list, bool (*filter_fn)(type, void *), void *extra_data) {   \
     /* Since the list would be destroyed anyway, it can be reused. */          \
-    for (size_t i = 0, retained = 0; i < List_##type##_len(list); i++)         \
+    size_t len = List_##type##_len(list);                                      \
+    for (size_t i = 0, retained = 0; i < len; i++)                             \
       if (filter_fn(list[i], extra_data))                                      \
         list[retained++] = list[i];                                            \
     return list;                                                               \
@@ -152,7 +153,8 @@
                                                                                \
   static inline void List_##type##_foreach(                                    \
       List_##type list, void (*action_fn)(type, void *), void *extra_data) {   \
-    for (size_t i = 0; i < List_##type##_len(list); i++)                       \
+    size_t len = List_##type##_len(list);                                      \
+    for (size_t i = 0; i < len; i++)                                           \
       action_fn(list[i], extra_data);                                          \
     List_##type##_destroy(list);                                               \
   }
@@ -165,7 +167,8 @@
   static inline List_##map_type List_##type##_map_to_##map_type(               \
       List_##type list, map_type (*mapper)(type, void *), void *extra_data) {  \
     List_##map_type nl = List_##map_type##_new_len(List_##type##_len(list));   \
-    for (size_t i = 0; i < List_##type##_len(list); i++)                       \
+    size_t len = List_##type##_len(list);                                      \
+    for (size_t i = 0; i < len; i++)                                           \
       nl[i] = mapper(list[i], extra_data);                                     \
     List_##type##_destroy(list);                                               \
     return nl;                                                                 \
@@ -183,9 +186,13 @@
     /* TODO Optimize with buffer re-use if possible.*/                         \
     /* TODO Debate using a VLA in place of nll. */                             \
     List_##map_type retlist = List_##map_type##_new_len(size_sum);             \
-    for (size_t i = 0; i < nll_len; i++)                                       \
-      for (size_t j = 0; j < List_##map_type##_len(nll[i]); j++)               \
+    for (size_t i = 0; i < nll_len; i++) {                                     \
+      size_t sublen = List_##map_type##_len(nll[i]);                           \
+      for (size_t j = 0; j < sublen; j++) {                                    \
         retlist[j] = nll[i][j];                                                \
+      }                                                                        \
+      List_destroy(nll[i]);                                                    \
+    }                                                                          \
     List_##type##_destroy(list);                                               \
     return retlist;                                                            \
   }
