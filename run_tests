@@ -1,1 +1,0 @@
-gcc test.c -lpthread && ./a.out && rm a.out

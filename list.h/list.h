@@ -1,5 +1,6 @@
 #ifndef INCLUDE_LISTUTIL
 #define INCLUDE_LISTUTIL
+#include <list.h/list.h>
 #include <stdbool.h>
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
@@ -191,7 +192,7 @@
       for (size_t j = 0; j < sublen; j++) {                                    \
         retlist[j] = nll[i][j];                                                \
       }                                                                        \
-      List_destroy(nll[i]);                                                    \
+      List_##map_type##_destroy(nll[i]);                                       \
     }                                                                          \
     List_##type##_destroy(list);                                               \
     return retlist;                                                            \

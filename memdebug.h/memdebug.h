@@ -601,7 +601,9 @@ void memdebug_free(void* ptr, size_t line, const char* func, const char* file) {
 /* Define externally visible functions to do nothing when debugging flag is disabled */
 /*************************************************************************************/
 #include <stdlib.h>
-
+void* memdebug_malloc(size_t n, size_t line, const char* func, const char* file) { (void)func; (void)file; (void)line; return malloc(n); }
+void* memdebug_realloc(void* ptr, size_t n, size_t line, const char* func, const char* file) { (void)func; (void)file; (void)line; return realloc(ptr, n); }
+void  memdebug_free(void* ptr, size_t line, const char* func, const char* file) { (void)func; (void)file; (void)line; free(ptr); }
 void print_heap() {}
 void low_mem_print_heap() {}
 size_t get_num_allocs() { return 0; }
