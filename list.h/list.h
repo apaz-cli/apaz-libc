@@ -1,6 +1,5 @@
 #ifndef INCLUDE_LISTUTIL
 #define INCLUDE_LISTUTIL
-#include <list.h/list.h>
 #include <stdbool.h>
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
@@ -88,18 +87,41 @@
     stptr += 1;                                                                \
     return (List_##type)stptr;                                                 \
   }                                                                            \
+                                                                               \
+  /**                                                                          \
+   *  Frees the memory allocated to the list. The list becomes unusable        \
+   *  after this point.                                                        \
+   */                                                                          \
   static inline void List_##type##_destroy(List_##type to_destroy) {           \
     free(((size_t *)to_destroy) - 2);                                          \
   }                                                                            \
+                                                                               \
+  /**                                                                          \
+   * Returns the length of the given list.                                     \
+   */                                                                          \
   static inline size_t List_##type##_len(List_##type list) {                   \
     return *(((size_t *)list) - 2);                                            \
   }                                                                            \
+                                                                               \
+  /**                                                                          \
+   * Returns the capacity of the given list.                                   \
+   */                                                                          \
   static inline size_t List_##type##_cap(List_##type list) {                   \
     return *(((size_t *)list) - 1);                                            \
   }                                                                            \
+                                                                               \
+  /**                                                                          \
+   * Resizes the given list's capacity to its current size, freeing the        \
+   * unused memory at the end. See List_type_resize().                         \
+   */                                                                          \
   static inline void List_##type##_trim(List_##type list) {                    \
     List_##type##_resize(list, List_##type##_len(list));                       \
   }                                                                            \
+                                                                               \
+  /**                                                                          \
+   * Creates a copy of the given list, containing exactly the same elements,   \
+   * with the capacity of the length of the given list.                        \
+   */                                                                          \
   static inline List_##type List_##type##_clone(List_##type to_clone) {        \
     size_t new_len = List_##type##_len(to_clone);                              \
     List_##type nl = List_##type##_new_len(new_len);                           \
@@ -107,6 +129,15 @@
       nl[i] = to_clone[i];                                                     \
     return nl;                                                                 \
   }                                                                            \
+                                                                               \
+  /**                                                                          \
+   * Adds the given item to the given list, which is passed as a pointer to    \
+   * List_type (So, as a type**).                                              \
+   *                                                                           \
+   * This method literally calls realloc(), so there's a bit of necessary      \
+   * pointer chasing. See List_type_addeq() for the other equivalent           \
+   * signature.                                                                \
+   */                                                                          \
   static inline void List_##type##_add(List_##type *list_ref,                  \
                                        type to_append) {                       \
     List_##type list = *list_ref;                                              \
@@ -118,6 +149,15 @@
           List_##type##_resize(list, (size_t)(current_cap * 1.5) + 16);        \
     list[current_len] = to_append;                                             \
   }                                                                            \
+                                                                               \
+  /**                                                                          \
+   * Adds the given item to the given list. After this, the reference to       \
+   * the list is invalid. A replacement reference is returned.                 \
+   *                                                                           \
+   * This method literally calls realloc(), so there's a bit of necessary      \
+   * pointer chasing. See List_type_addeq() for the other equivalent           \
+   * signature.                                                                \
+   */                                                                          \
   static inline List_##type List_##type##_addeq(List_##type list,              \
                                                 type to_append) {              \
     size_t current_len = List_##type##_len(list);                              \
@@ -128,27 +168,72 @@
     list[current_len] = to_append;                                             \
     return list;                                                               \
   }                                                                            \
-  static inline void List_##type##_pop(List_##type list) {                     \
-    __List_##type##_setlen(list, List_##type##_len(list) - 1);                 \
-  }                                                                            \
-  static inline type *List_##type##_peek(List_##type list) {                   \
-    return list + (List_##type##_len(list) - 1);                               \
-  }                                                                            \
-  static inline List_##type List_##type##_sublist(List_##type list,            \
-                                                  size_t from, size_t to) {    \
-    /* TODO Figure out asserts. */                                             \
-    return list;                                                               \
+                                                                               \
+  /**                                                                          \
+   * Equivalent to List_type_add(), but has a different name to make           \
+   * explicit that the list is being treated like a stack.                     \
+   */                                                                          \
+  static inline void List_##type##_push(List_##type *list_ref, type to_push) { \
+    List_##type##_add(list_ref, to_push);                                      \
   }                                                                            \
                                                                                \
-  /* For fear of redefinition below, define filter and foreach here. */        \
+  /**                                                                          \
+   * Equivalent to List_type_addeq(), but has a different name to make         \
+   * explicit that the list is being treated like a stack.                     \
+   */                                                                          \
+  static inline List_##type List_##type##_pusheq(List_##type list,             \
+                                                 type to_push) {               \
+    return List_##type##_addeq(list, to_push);                                 \
+  }                                                                            \
+                                                                               \
+  /**                                                                          \
+   * Removes and returns the last element of this list. Think of it            \
+   * exactly like popping from a stack.                                        \
+   */                                                                          \
+  static inline type List_##type##_pop(List_##type list) {                     \
+    size_t newlen = List_##type##_len(list) - 1;                               \
+    __List_##type##_setlen(list, newlen);                                      \
+    return list[newlen];                                                       \
+  }                                                                            \
+                                                                               \
+  /**                                                                          \
+   * Returns the last element of this list. Think of it exactly like           \
+   * peeking onto a stack.                                                     \
+   */                                                                          \
+  static inline type List_##type##_peek(List_##type list) {                    \
+    return list[List_##type##_len(list) - 1];                                  \
+  }                                                                            \
+                                                                               \
+  /**                                                                          \
+   * Returns a new list of the elements in the given list that are from        \
+   * index "from" (inclusive) to index "to" (exclusive).                       \
+   */                                                                          \
+  static inline List_##type List_##type##_sublist(List_##type list,            \
+                                                  size_t from, size_t to) {    \
+    /* TODO get rid of this swap and do actual arg checking. */                \
+    size_t f = MIN(from, to), t = MAX(from, to);                               \
+    List_##type nl = List_##type##_new_len(t - f);                             \
+    for (size_t i = 0; i < (t - f); i++)                                       \
+      nl[i] = list[i + f];                                                     \
+    return nl;                                                                 \
+  }                                                                            \
+                                                                               \
+  /******************************/                                             \
+  /* Singular Monadic Functions */                                             \
+  /******************************/                                             \
+  /* For fear of redefinition in LIST_DEFINE_MONAD below, monads that only     \
+     have one type attached to them are defined here. The ones that have two   \
+     are defined in the next macro, not this one. */                           \
                                                                                \
   static inline List_##type List_##type##_filter(                              \
       List_##type list, bool (*filter_fn)(type, void *), void *extra_data) {   \
     /* Since the list would be destroyed anyway, it can be reused. */          \
     size_t len = List_##type##_len(list);                                      \
-    for (size_t i = 0, retained = 0; i < len; i++)                             \
+    for (size_t i = 0, retained = 0; i < len; i++) {                           \
       if (filter_fn(list[i], extra_data))                                      \
         list[retained++] = list[i];                                            \
+      __List_##type##_setlen(list, retained);                                  \
+    }                                                                          \
     return list;                                                               \
   }                                                                            \
                                                                                \
@@ -174,27 +259,40 @@
     List_##type##_destroy(list);                                               \
     return nl;                                                                 \
   }                                                                            \
+                                                                               \
   static inline List_##map_type List_##type##_flatmap_to_##map_type(           \
       List_##type list, List_##map_type (*mapper)(type, void *),               \
       void *extra_data) {                                                      \
+                                                                               \
+    /* Map each element to a list, shove the lists into a list, and            \
+       count their combined length.*/                                          \
     size_t nll_len = List_##type##_len(list), size_sum = 0;                    \
-    List_List_##map_type nll = List_List_##map_type##_new_len(nll_len);        \
+    List_##map_type nll[nll_len];                                              \
     for (size_t i = 0; i < nll_len; i++) {                                     \
       List_##map_type ml = mapper(list[i], extra_data);                        \
-      nll_len += List_##map_type##_len(ml);                                    \
+      size_sum += List_##map_type##_len(ml);                                   \
       nll[i] = ml;                                                             \
     }                                                                          \
-    /* TODO Optimize with buffer re-use if possible.*/                         \
-    /* TODO Debate using a VLA in place of nll. */                             \
-    List_##map_type retlist = List_##map_type##_new_len(size_sum);             \
+                                                                               \
+    /* Re-use the original buffer as the output buffer if                      \
+       it's large enough. */                                                   \
+    bool big_enough = sizeof(map_type) * size_sum <= sizeof(type) * nll_len;   \
+    List_##map_type retlist = big_enough                                       \
+                                  ? (List_##map_type)list                      \
+                                  : List_##map_type##_new_len(size_sum);       \
+                                                                               \
+    /* Flatten and copy the results into the output buffer. */                 \
     for (size_t i = 0; i < nll_len; i++) {                                     \
       size_t sublen = List_##map_type##_len(nll[i]);                           \
-      for (size_t j = 0; j < sublen; j++) {                                    \
+      for (size_t j = 0; j < sublen; j++)                                      \
         retlist[j] = nll[i][j];                                                \
-      }                                                                        \
       List_##map_type##_destroy(nll[i]);                                       \
     }                                                                          \
-    List_##type##_destroy(list);                                               \
+                                                                               \
+    /* If the original list is not being re-used, destroy it. */               \
+    if (!big_enough)                                                           \
+      List_##type##_destroy(list);                                             \
+                                                                               \
     return retlist;                                                            \
   }
 
