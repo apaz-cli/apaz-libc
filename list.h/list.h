@@ -226,7 +226,6 @@
                                         int (*comparator)(type *, type *)) {   \
     qsort(list, List_##type##_len(list), sizeof(type),                         \
           (int (*)(const void *, const void *))comparator);                    \
-    return list;                                                               \
   }                                                                            \
                                                                                \
   /******************************/                                             \
