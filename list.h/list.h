@@ -5,6 +5,7 @@
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 
+/******************************************************************************/
 #define LIST_DEFINE(type)                                                      \
   typedef type *List_##type;                                                   \
                                                                                \
@@ -218,6 +219,16 @@
     return nl;                                                                 \
   }                                                                            \
                                                                                \
+  /**                                                                          \
+   * Sorts the given list in the order specified by the comparator function.   \
+   */                                                                          \
+  static inline void List_##type##_sort(List_##type list,                      \
+                                        int (*comparator)(type *, type *)) {   \
+    qsort(list, List_##type##_len(list), sizeof(type),                         \
+          (int (*)(const void *, const void *))comparator);                    \
+    return list;                                                               \
+  }                                                                            \
+                                                                               \
   /******************************/                                             \
   /* Singular Monadic Functions */                                             \
   /******************************/                                             \
@@ -243,7 +254,8 @@
     for (size_t i = 0; i < len; i++)                                           \
       action_fn(list[i], extra_data);                                          \
     List_##type##_destroy(list);                                               \
-  }
+  }                                                                            \
+  /****************************************************************************/
 
 // TODO figure out how to get zip() working.
 // TODO cross product
