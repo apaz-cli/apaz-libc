@@ -16,8 +16,10 @@
 /* Charptr String Functions */
 /****************************/
 
+
 static inline size_t apaz_strlen(char *str) {
-  register const char *s;
+  const char *s;
+  #undef REG
   for (s = str; *s; ++s)
     ;
   return (s - str);
@@ -226,7 +228,7 @@ static inline uint64_t String_hash(String str) {
   // djb2
   char c;
   uint64_t h = 5381;
-  while (c = *str++)
+  while ((c = *str++))
     h = ((h << 5) + h) + c; 
   return h;
 }
