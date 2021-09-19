@@ -23,6 +23,8 @@ extern "C" {
 
 #include "apaz-string.h/apaz-string.h"
 
+#include "arena.h/arena.h"
+
 /*******************/
 /* LIBRARY INTEROP */
 /*******************/

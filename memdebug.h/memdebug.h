@@ -1,5 +1,4 @@
 
-
 /***********/
 /* Mutexes */
 /***********/
@@ -106,8 +105,8 @@ static inline int mutex_destroy(mutex_t* mutex) { return pthread_mutex_destroy(m
 #include <stdlib.h>
 #include <string.h>
 
-void low_mem_print_heap();
-void print_heap();
+static inline void low_mem_print_heap();
+static inline void print_heap();
 
 /******************************************/
 /* Void Pointer Hash Function For Hashmap */
@@ -373,7 +372,8 @@ print_heap_dump_header() {
 /**********************/
 
 // Print all of the memory allocations of this program.
-void print_heap() {
+static inline void 
+print_heap() {
     size_t total_allocated = 0;
     size_t allocs_idx = 0;
     MemAlloc* all_allocs = (MemAlloc*)malloc(sizeof(MemAlloc) * num_allocs);
@@ -441,7 +441,8 @@ void print_heap() {
 
 // This is the same as print_heap() except it doesn't sort
 // because it's meant to be called when the program is out of memory.
-void low_mem_print_heap() {
+static inline void
+low_mem_print_heap() {
     size_t total_allocated = 0;
 
     MEMDEBUG_LOCK_MUTEX;
@@ -476,7 +477,8 @@ void low_mem_print_heap() {
     print_heap_summary_totals(total_allocated, num_allocs);
 }
 
-size_t get_num_allocs() {
+static inline size_t 
+get_num_allocs() {
     return num_allocs;
 }
 
@@ -484,7 +486,8 @@ size_t get_num_allocs() {
 /* malloc(), realloc(), free() Redefinitions */
 /*********************************************/
 
-void* memdebug_malloc(size_t n, size_t line, const char* func, const char* file) {
+static inline void*
+memdebug_malloc(size_t n, size_t line, const char* func, const char* file) {
     // Call malloc()
     void* ptr = malloc(n);
     if (!ptr) OOM(line, func, file, n);
@@ -517,7 +520,8 @@ void* memdebug_malloc(size_t n, size_t line, const char* func, const char* file)
     return ptr;
 }
 
-void* memdebug_realloc(void* ptr, size_t n, size_t line, const char* func, const char* file) {
+static inline void*
+memdebug_realloc(void* ptr, size_t n, size_t line, const char* func, const char* file) {
     MEMDEBUG_LOCK_MUTEX;
 
     // Check to make sure the allocation exists, and keep track of the location
@@ -561,7 +565,8 @@ void* memdebug_realloc(void* ptr, size_t n, size_t line, const char* func, const
     return newptr;
 }
 
-void memdebug_free(void* ptr, size_t line, const char* func, const char* file) {
+static inline void
+memdebug_free(void* ptr, size_t line, const char* func, const char* file) {
     MEMDEBUG_LOCK_MUTEX;
 
     // Check to make sure the allocation exists, and keep track of the location
@@ -591,21 +596,26 @@ void memdebug_free(void* ptr, size_t line, const char* func, const char* file) {
 }
 
 // Wrap malloc(), realloc(), free() with the new functionality
-
-#define malloc(n) memdebug_malloc(n, __LINE__, __func__, __FILE__)
+static inline void*  original_malloc(size_t n) { return malloc(n); }
+static inline void*  original_realloc(void* ptr, size_t n) { return realloc(ptr, n); }
+static inline void   original_free(void* ptr) { free(ptr); }
+#define malloc(n)       memdebug_malloc(      n, __LINE__, __func__, __FILE__)
 #define realloc(ptr, n) memdebug_realloc(ptr, n, __LINE__, __func__, __FILE__)
-#define free(ptr) memdebug_free(ptr, __LINE__, __func__, __FILE__)
+#define free(ptr)       memdebug_free(   ptr,    __LINE__, __func__, __FILE__)
 
 #else  // MEMDEBUG flag is disabled
 /*************************************************************************************/
 /* Define externally visible functions to do nothing when debugging flag is disabled */
 /*************************************************************************************/
 #include <stdlib.h>
-void* memdebug_malloc(size_t n, size_t line, const char* func, const char* file) { (void)func; (void)file; (void)line; return malloc(n); }
-void* memdebug_realloc(void* ptr, size_t n, size_t line, const char* func, const char* file) { (void)func; (void)file; (void)line; return realloc(ptr, n); }
-void  memdebug_free(void* ptr, size_t line, const char* func, const char* file) { (void)func; (void)file; (void)line; free(ptr); }
-void print_heap() {}
-void low_mem_print_heap() {}
-size_t get_num_allocs() { return 0; }
+static inline void*  original_malloc(size_t n) { return malloc(n); }
+static inline void*  original_realloc(void* ptr, size_t n) { return realloc(ptr, n); }
+static inline void   original_free(void* ptr) { free(ptr); }
+static inline void*  memdebug_malloc(size_t n, size_t line, const char* func, const char* file) { (void)func; (void)file; (void)line; return malloc(n); }
+static inline void*  memdebug_realloc(void* ptr, size_t n, size_t line, const char* func, const char* file) { (void)func; (void)file; (void)line; return realloc(ptr, n); }
+static inline void   memdebug_free(void* ptr, size_t line, const char* func, const char* file) { (void)func; (void)file; (void)line; free(ptr); }
+static inline void   print_heap() {}
+static inline void   low_mem_print_heap() {}
+static inline size_t get_num_allocs() { return 0; }
 #endif
 #endif  // Include guard

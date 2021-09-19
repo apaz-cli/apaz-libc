@@ -171,6 +171,18 @@
   }                                                                            \
                                                                                \
   /**                                                                          \
+   * Adds all the elements from the second list to the first list, without     \
+   * destroying either.                                                        \
+   */                                                                          \
+  static inline List_##type List_##type##_addAlleq(List_##type list,           \
+                                                   List_##type to_append) {    \
+    size_t n = List_##type##_len(to_append);                                   \
+    for (size_t i = 0; i < n; i++)                                             \
+      list = List_##type##_addeq(list, to_append[i]);                          \
+    return list;                                                               \
+  }                                                                            \
+                                                                               \
+  /**                                                                          \
    * Equivalent to List_type_add(), but has a different name to make           \
    * explicit that the list is being treated like a stack.                     \
    */                                                                          \
