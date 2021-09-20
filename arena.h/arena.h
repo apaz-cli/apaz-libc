@@ -113,8 +113,6 @@ static inline void *_Arena_malloc(Arena *arena, size_t n, size_t line,
 
   arena->given = List_MemAlloc_addeq(arena->given, newalloc);
 
-  printf("Given len: %zu\n", List_MemAlloc_len(arena->given));
-
 #if PRINT_MEMALLOCS
   // Print message
   printf(ANSI_COLOR_FUNC "Arena_malloc(" ANSI_COLOR_RESET ANSI_COLOR_PNTR
@@ -144,20 +142,12 @@ static inline void Arena_print_memallocs(Arena *arena) {
   do {
     all_arena_allocs = List_MemAlloc_addAlleq(all_arena_allocs, arena->given);
     total_bytes += arena->buf_size;
-    printf("Alloc num: %zu, Total Allocated: %zu\n",
-           List_MemAlloc_len(all_arena_allocs), total_bytes);
   } while ((arena = arena->next));
 
-  // Print them
-  for (size_t i = 0; i < List_MemAlloc_len(all_arena_allocs); i++) {
-    printf("%p\n", all_arena_allocs[i].ptr);
-  }
 
   // Sort them
   size_t num_arena_allocs = List_MemAlloc_len(all_arena_allocs);
   sort_memallocs(all_arena_allocs, num_arena_allocs);
-
-  printf("Num_allocs: %zu\n", num_arena_allocs);
 
   // Print the results.
   // This is mostly copy/paste from memdebug.h.
