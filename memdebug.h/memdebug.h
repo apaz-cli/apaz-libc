@@ -355,8 +355,8 @@ print_alloc_summary(size_t total_ptrs_at_location, size_t total_bytes_at_locatio
 static inline void
 print_heap_summary_totals(size_t total_allocated, size_t num_allocs) {
     printf(
-        "\nTotal Heap size in bytes: %zu"
-        "\nTotal number of heap allocations: %zu"
+        "\nTotal size in bytes: %zu"
+        "\nTotal number of allocations: %zu"
         "\n\n\n",
         total_allocated, num_allocs);
     fflush(stdout);

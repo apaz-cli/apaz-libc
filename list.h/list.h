@@ -176,9 +176,14 @@
    */                                                                          \
   static inline List_##type List_##type##_addAlleq(List_##type list,           \
                                                    List_##type to_append) {    \
-    size_t n = List_##type##_len(to_append);                                   \
-    for (size_t i = 0; i < n; i++)                                             \
-      list = List_##type##_addeq(list, to_append[i]);                          \
+    size_t lenl = List_##type##_len(list);                                     \
+    size_t lent = List_##type##_len(to_append);                                \
+    if (lenl + lent > List_##type##_cap(list))                                 \
+      list = List_##type##_resize(list, (lenl + lent) * 1.5 + 16);             \
+    for (size_t i = 0; i < lent; i++)                                          \
+      list[i + lenl] = to_append[i];                                           \
+    __List_##type##_setlen(list, lenl + lent);                                 \
+                                                                               \
     return list;                                                               \
   }                                                                            \
                                                                                \

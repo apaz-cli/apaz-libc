@@ -1,5 +1,3 @@
-
-
 #ifndef ARENA_INCLUDE
 #define ARENA_INCLUDE
 
@@ -40,7 +38,7 @@ static inline Arena *Arena_new() {
 
   Arena *arena = (Arena *)malloc(sizeof(Arena));
   arena->buffer = (char *)malloc(buffer_cap);
-  arena->buf_size = sizeof(Arena);
+  arena->buf_size = 0;
   arena->buf_cap = buffer_cap;
   arena->next = NULL;
 
@@ -75,8 +73,9 @@ static inline void Arena_destroy(Arena *arena) {
   Arena_destroy(arena->next);
   free(arena);
 }
-#define Arena_malloc(num_bytes)                                                \
-  _Arena_malloc(num_bytes, __LINE__, __func__, __FILE__)
+
+#define Arena_malloc(arena, n)                                                 \
+  _Arena_malloc(arena, n, __LINE__, __func__, __FILE__)
 static inline void *_Arena_malloc(Arena *arena, size_t n, size_t line,
                                   const char *func, const char *file) {
   if (n > _arena_size) {
@@ -91,8 +90,11 @@ static inline void *_Arena_malloc(Arena *arena, size_t n, size_t line,
     exit(1);
   }
 
-  // Build another arena on this one if it's full.
+// Build another arena on this one if it's full.
+#if PRINT_MEMALLOCS
   Arena *original = arena;
+#endif
+
   if (arena->buf_size + n >= arena->buf_cap)
     arena = Arena_new_on(arena);
 
@@ -110,6 +112,8 @@ static inline void *_Arena_malloc(Arena *arena, size_t n, size_t line,
   newalloc.file = file;
 
   arena->given = List_MemAlloc_addeq(arena->given, newalloc);
+
+  printf("Given len: %zu\n", List_MemAlloc_len(arena->given));
 
 #if PRINT_MEMALLOCS
   // Print message
@@ -134,20 +138,26 @@ static inline void Arena_print_memallocs(Arena *arena) {
 
   // Create one big list of all the allocations stored.
   // At the same time, get the total size allocated.
-  Arena *original = arena;
   List_MemAlloc all_arena_allocs = List_MemAlloc_new_cap(1000);
-  size_t total_allocated = 0;
-  while (arena->next) {
+  size_t total_bytes = 0;
+
+  do {
     all_arena_allocs = List_MemAlloc_addAlleq(all_arena_allocs, arena->given);
-    size_t n = List_MemAlloc_len(arena->given);
-    for (size_t i = 0; i < n; i++)
-      total_allocated += arena->given[i].size;
-    arena = arena->next;
+    total_bytes += arena->buf_size;
+    printf("Alloc num: %zu, Total Allocated: %zu\n",
+           List_MemAlloc_len(all_arena_allocs), total_bytes);
+  } while ((arena = arena->next));
+
+  // Print them
+  for (size_t i = 0; i < List_MemAlloc_len(all_arena_allocs); i++) {
+    printf("%p\n", all_arena_allocs[i].ptr);
   }
 
   // Sort them
   size_t num_arena_allocs = List_MemAlloc_len(all_arena_allocs);
   sort_memallocs(all_arena_allocs, num_arena_allocs);
+
+  printf("Num_allocs: %zu\n", num_arena_allocs);
 
   // Print the results.
   // This is mostly copy/paste from memdebug.h.
@@ -186,7 +196,8 @@ static inline void Arena_print_memallocs(Arena *arena) {
     print_alloc_summary(total_ptrs_at_location, total_bytes_at_location,
                         location_file, location_func, location_line);
   }
-  print_heap_summary_totals(total_allocated, num_arena_allocs);
+  print_heap_summary_totals(total_bytes, num_arena_allocs);
+  List_MemAlloc_destroy(all_arena_allocs);
 #endif
 }
 
