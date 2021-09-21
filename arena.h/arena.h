@@ -3,16 +3,24 @@
 
 #include "../list.h/list.h"
 #include "../memdebug.h/memdebug.h"
+#include <stddef.h>
 #include <stdio.h>
 #include <unistd.h>
 
-#define ARENA_PAGES 128
+#ifndef ARENA_ERRCHECK
+#define ARENA_ERRCHECK 1
+#endif
 
 static size_t _arena_size = 0;
 static inline size_t arena_get_page_size() {
+#define ARENA_PAGES 128
   if (!_arena_size)
     _arena_size = (size_t)sysconf(_SC_PAGESIZE) * ARENA_PAGES;
   return _arena_size;
+}
+
+static inline size_t roundToAlignment(size_t n, size_t alignment) {
+  return (n + alignment - 1) / alignment * alignment;
 }
 
 #if MEMDEBUG
@@ -22,25 +30,28 @@ LIST_DEFINE(MemAlloc);
 struct Arena;
 typedef struct Arena Arena;
 struct Arena {
-  size_t buf_cap;
-  size_t buf_size;
-  char *buffer;
+  char *name;
   Arena *next;
 
 #if MEMDEBUG
   List_MemAlloc given;
 #endif
+
+  size_t buf_cap;
+  size_t buf_size;
+  char buffer[]; // FAM
 };
 
-static inline Arena *Arena_new() {
+static inline Arena *Arena_new(char *name) {
   size_t page_size = arena_get_page_size();
   size_t buffer_cap = ARENA_PAGES * page_size;
 
   Arena *arena = (Arena *)malloc(sizeof(Arena));
-  arena->buffer = (char *)malloc(buffer_cap);
-  arena->buf_size = 0;
-  arena->buf_cap = buffer_cap;
+  arena->name = name;
   arena->next = NULL;
+  arena->buf_cap = buffer_cap-sizeof(Arena);
+  arena->buf_size = 0;
+  
 
 #if MEMDEBUG
   arena->given = List_MemAlloc_new_cap(50);
@@ -50,7 +61,7 @@ static inline Arena *Arena_new() {
 }
 
 static inline Arena *Arena_new_on(Arena *current) {
-  Arena *new_arena = Arena_new();
+  Arena *new_arena = Arena_new(current->name);
 #if MEMDEBUG
   new_arena->given = List_MemAlloc_new_cap(50);
 #endif
@@ -74,25 +85,37 @@ static inline void Arena_destroy(Arena *arena) {
   free(arena);
 }
 
-#define Arena_malloc(arena, n)                                                 \
-  _Arena_malloc(arena, n, __LINE__, __func__, __FILE__)
+// #define Arena_malloc(arena, bytes) _Arena_malloc(arena, bytes,
+// _Alignof(max_align_t), __LINE__, __func__, __FILE__)
+#define Arena_malloc_of(arena, type)                                           \
+  _Arena_malloc(arena, roundToAlignment(sizeof(type), _Alignof(type)),         \
+                __LINE__, __func__, __FILE__)
+#define Arena_malloc_n_of(arena, n, type)                                      \
+  _Arena_malloc(arena, roundToAlignment(sizeof(type), _Alignof(type)) * n,     \
+                __LINE__, __func__, __FILE__)
+#define Arena_malloc_align(arena, bytes, alignment)                            \
+  _Arena_malloc(arena, roundToAlignment(n, alignment), __LINE__, __func__,     \
+                __FILE__)
+#define Arena_malloc_unaligned(arena, bytes)                                   \
+  _Arena_malloc(arena, bytes, __LINE__, __func__, __FILE__)
 static inline void *_Arena_malloc(Arena *arena, size_t n, size_t line,
                                   const char *func, const char *file) {
   if (n > _arena_size) {
     fprintf(stdout,
             ANSI_COLOR_RESET
             "Cannot allocate " ANSI_COLOR_BYTE "%zu" ANSI_COLOR_RESET
-            " bytes on an arena. Error inside " ANSI_COLOR_FUNC
+            " bytes on arena: %s. Error inside " ANSI_COLOR_FUNC
             "%s()" ANSI_COLOR_RESET " on line " ANSI_COLOR_LINE
             "%zu" ANSI_COLOR_RESET " in " ANSI_COLOR_FILE "%s" ANSI_COLOR_RESET
             ".\n",
-            n, func, line, file);
+            n, arena->name, func, line, file);
     exit(1);
   }
 
 // Build another arena on this one if it's full.
 #if PRINT_MEMALLOCS
   Arena *original = arena;
+  size_t prev_size = original->buf_size;
 #endif
 
   if (arena->buf_size + n >= arena->buf_cap)
@@ -115,20 +138,58 @@ static inline void *_Arena_malloc(Arena *arena, size_t n, size_t line,
 
 #if PRINT_MEMALLOCS
   // Print message
-  printf(ANSI_COLOR_FUNC "Arena_malloc(" ANSI_COLOR_RESET ANSI_COLOR_PNTR
-                         "%p" ANSI_COLOR_RESET ANSI_COLOR_BYTE
-                         "%zu" ANSI_COLOR_RESET ANSI_COLOR_FUNC
-                         ")" ANSI_COLOR_RESET " -> " ANSI_COLOR_PNTR
-                         "%p" ANSI_COLOR_RESET " on line " ANSI_COLOR_LINE
-                         "%zu" ANSI_COLOR_RESET " of " ANSI_COLOR_FUNC
-                         "%s()" ANSI_COLOR_RESET " in " ANSI_COLOR_FILE
-                         "%s" ANSI_COLOR_RESET ".\n",
-         original, n, ptr, line, func, file);
+  printf(ANSI_COLOR_FUNC
+         "Arena_malloc(" ANSI_COLOR_RESET ANSI_COLOR_HEAD "%s" ANSI_COLOR_RESET
+         ", " ANSI_COLOR_BYTE "%zu" ANSI_COLOR_RESET ANSI_COLOR_FUNC
+         ")" ANSI_COLOR_RESET " -> " ANSI_COLOR_PNTR "%p" ANSI_COLOR_RESET
+         " (offset: " ANSI_COLOR_BYTE "%zu" ANSI_COLOR_RESET
+         " -> " ANSI_COLOR_BYTE "%zu" ANSI_COLOR_RESET
+         ") on line " ANSI_COLOR_LINE "%zu" ANSI_COLOR_RESET
+         " of " ANSI_COLOR_FUNC "%s()" ANSI_COLOR_RESET " in " ANSI_COLOR_FILE
+         "%s" ANSI_COLOR_RESET ".\n",
+         original->name, n, ptr, prev_size, arena->buf_size, line, func, file);
   fflush(stdout);
 #endif
 #endif
 
   return ptr;
+}
+
+#define Arena_pop_of(arena, type)                                              \
+  _Arena_pop(arena, roundToAlignment(sizeof(type), _Alignof(type)), __LINE__,  \
+             __func__, __FILE__)
+#define Arena_pop_n_of(arena, n, type)                                         \
+  _Arena_pop(arena, roundToAlignment(sizeof(type), _Alignof(type)) * n,        \
+             __LINE__, __func__, __FILE__)
+#define Arena_pop_align(arena, bytes, alignment) _Arena_pop(arena, roundToAlignment(n, alignment))                   , __LINE__, __func__, __FILE__)
+#define Arena_pop_unaligned(arena, bytes)                                      \
+  _Arena_pop(arena, bytes, __LINE__, __func__, __FILE__)
+static inline void _Arena_pop(Arena *arena, size_t n, size_t line,
+                              const char *func, const char *file) {
+#if MEMDEBUG
+#if PRINT_MEMALLOCS
+  size_t prev_size = arena->buf_size;
+#endif
+#endif
+
+  // Handle underflow
+  arena->buf_size = arena->buf_size > n ? arena->buf_size - n : 0;
+
+#if MEMDEBUG
+#if PRINT_MEMALLOCS
+  // Print message
+  printf(ANSI_COLOR_FUNC
+         "Arena_pop(" ANSI_COLOR_RESET ANSI_COLOR_HEAD "%s" ANSI_COLOR_RESET
+         ", " ANSI_COLOR_BYTE "%zu" ANSI_COLOR_RESET ANSI_COLOR_FUNC
+         ")" ANSI_COLOR_RESET " (offset: " ANSI_COLOR_BYTE
+         "%zu" ANSI_COLOR_RESET " -> " ANSI_COLOR_BYTE "%zu" ANSI_COLOR_RESET
+         ")" ANSI_COLOR_RESET " on line " ANSI_COLOR_LINE "%zu" ANSI_COLOR_RESET
+         " of " ANSI_COLOR_FUNC "%s()" ANSI_COLOR_RESET " in " ANSI_COLOR_FILE
+         "%s" ANSI_COLOR_RESET ".\n",
+         arena->name, n, prev_size, arena->buf_size, line, func, file);
+  fflush(stdout);
+#endif
+#endif
 }
 
 static inline void Arena_print_memallocs(Arena *arena) {
@@ -143,7 +204,6 @@ static inline void Arena_print_memallocs(Arena *arena) {
     all_arena_allocs = List_MemAlloc_addAlleq(all_arena_allocs, arena->given);
     total_bytes += arena->buf_size;
   } while ((arena = arena->next));
-
 
   // Sort them
   size_t num_arena_allocs = List_MemAlloc_len(all_arena_allocs);
