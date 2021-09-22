@@ -49,9 +49,8 @@ static inline Arena *Arena_new(char *name) {
   Arena *arena = (Arena *)malloc(sizeof(Arena));
   arena->name = name;
   arena->next = NULL;
-  arena->buf_cap = buffer_cap-sizeof(Arena);
+  arena->buf_cap = buffer_cap - sizeof(Arena);
   arena->buf_size = 0;
-  
 
 #if MEMDEBUG
   arena->given = List_MemAlloc_new_cap(50);
@@ -87,20 +86,16 @@ static inline void Arena_destroy(Arena *arena) {
 
 // #define Arena_malloc(arena, bytes) _Arena_malloc(arena, bytes,
 // _Alignof(max_align_t), __LINE__, __func__, __FILE__)
+#define Arena_malloc(arena, bytes)                                             \
+  _Arena_malloc(arena, roundToAlignment(bytes, _Alignof(max_align_t)),         \
+                __LINE__, __func__, __FILE__)
 #define Arena_malloc_of(arena, type)                                           \
-  _Arena_malloc(arena, roundToAlignment(sizeof(type), _Alignof(type)),         \
+  _Arena_malloc(arena, roundToAlignment(sizeof(type), _Alignof(max_align_t)),  \
                 __LINE__, __func__, __FILE__)
-#define Arena_malloc_n_of(arena, n, type)                                      \
-  _Arena_malloc(arena, roundToAlignment(sizeof(type), _Alignof(type)) * n,     \
-                __LINE__, __func__, __FILE__)
-#define Arena_malloc_align(arena, bytes, alignment)                            \
-  _Arena_malloc(arena, roundToAlignment(n, alignment), __LINE__, __func__,     \
-                __FILE__)
-#define Arena_malloc_unaligned(arena, bytes)                                   \
-  _Arena_malloc(arena, bytes, __LINE__, __func__, __FILE__)
 static inline void *_Arena_malloc(Arena *arena, size_t n, size_t line,
                                   const char *func, const char *file) {
-  if (n > _arena_size) {
+#if MEMDEBUG
+  if (n > arena->buf_cap) {
     fprintf(stdout,
             ANSI_COLOR_RESET
             "Cannot allocate " ANSI_COLOR_BYTE "%zu" ANSI_COLOR_RESET
@@ -111,11 +106,14 @@ static inline void *_Arena_malloc(Arena *arena, size_t n, size_t line,
             n, arena->name, func, line, file);
     exit(1);
   }
+#endif
 
 // Build another arena on this one if it's full.
+#if MEMDEBUG
 #if PRINT_MEMALLOCS
   Arena *original = arena;
   size_t prev_size = original->buf_size;
+#endif
 #endif
 
   if (arena->buf_size + n >= arena->buf_cap)
@@ -151,19 +149,15 @@ static inline void *_Arena_malloc(Arena *arena, size_t n, size_t line,
   fflush(stdout);
 #endif
 #endif
-
   return ptr;
 }
 
-#define Arena_pop_of(arena, type)                                              \
-  _Arena_pop(arena, roundToAlignment(sizeof(type), _Alignof(type)), __LINE__,  \
+#define Arena_pop(arena, bytes)                                                \
+  _Arena_pop(arena, roundToAlignment(bytes, _Alignof(max_align_t)), __LINE__,  \
              __func__, __FILE__)
-#define Arena_pop_n_of(arena, n, type)                                         \
-  _Arena_pop(arena, roundToAlignment(sizeof(type), _Alignof(type)) * n,        \
+#define Arena_pop_of(arena, type)                                              \
+  _Arena_pop(arena, roundToAlignment(sizeof(type), _Alignof(max_align_t)),     \
              __LINE__, __func__, __FILE__)
-#define Arena_pop_align(arena, bytes, alignment) _Arena_pop(arena, roundToAlignment(n, alignment))                   , __LINE__, __func__, __FILE__)
-#define Arena_pop_unaligned(arena, bytes)                                      \
-  _Arena_pop(arena, bytes, __LINE__, __func__, __FILE__)
 static inline void _Arena_pop(Arena *arena, size_t n, size_t line,
                               const char *func, const char *file) {
 #if MEMDEBUG
@@ -177,6 +171,7 @@ static inline void _Arena_pop(Arena *arena, size_t n, size_t line,
 
 #if MEMDEBUG
 #if PRINT_MEMALLOCS
+
   // Print message
   printf(ANSI_COLOR_FUNC
          "Arena_pop(" ANSI_COLOR_RESET ANSI_COLOR_HEAD "%s" ANSI_COLOR_RESET
@@ -195,17 +190,17 @@ static inline void _Arena_pop(Arena *arena, size_t n, size_t line,
 static inline void Arena_print_memallocs(Arena *arena) {
 #if MEMDEBUG
 
-  // Create one big list of all the allocations stored.
-  // At the same time, get the total size allocated.
+  // Create one big list that's a copy of all the allocations stored.
+  // At the same time, get the total number of bytes allocated.
   List_MemAlloc all_arena_allocs = List_MemAlloc_new_cap(1000);
   size_t total_bytes = 0;
-
   do {
     all_arena_allocs = List_MemAlloc_addAlleq(all_arena_allocs, arena->given);
     total_bytes += arena->buf_size;
   } while ((arena = arena->next));
 
-  // Sort them
+  // Sort the list of all allocations. This does not modify the order of the
+  // original lists.
   size_t num_arena_allocs = List_MemAlloc_len(all_arena_allocs);
   sort_memallocs(all_arena_allocs, num_arena_allocs);
 
