@@ -115,8 +115,8 @@
    * Resizes the given list's capacity to its current size, freeing the        \
    * unused memory at the end. See List_type_resize().                         \
    */                                                                          \
-  static inline void List_##type##_trim(List_##type list) {                    \
-    List_##type##_resize(list, List_##type##_len(list));                       \
+  static inline List_##type List_##type##_trim(List_##type list) {             \
+    return List_##type##_resize(list, List_##type##_len(list));                \
   }                                                                            \
                                                                                \
   /**                                                                          \
