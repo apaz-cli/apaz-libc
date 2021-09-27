@@ -1,6 +1,7 @@
 #ifndef COMMON_INCLUDES
 #define COMMON_INCLUDES
 
+#include <sys/types.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -29,8 +30,9 @@ extern "C" {
 /* LIBRARY INTEROP */
 /*******************/
 
-// Provide conversion between strings and lists of char.
+typedef char* charptr;
 
+LIST_DEFINE(charptr);
 LIST_DEFINE(char);
 LIST_DEFINE(List_char);
 LIST_DEFINE(String);

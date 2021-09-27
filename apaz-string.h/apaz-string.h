@@ -49,6 +49,33 @@ static inline bool apaz_str_startsWith(char *str, char *prefix) {
   return true;
 }
 
+/* 
+ * Not like normal strtok. No global state. 
+ * 
+ * Returns the index of the first match, or NULL if none found.
+ */
+static inline char* apaz_strtok(char *str, const char *delim) {
+  char d, s;
+  char* saved = NULL;
+  char* currentstr = str;
+  const char* currentdelim = delim;
+
+  while (true) {
+    d = *currentdelim, s = *currentstr;
+
+    if ((!d | !s)) return d ? NULL : saved;
+    else if (d == s) {
+      saved = NULL;
+      currentstr++;
+      currentdelim = delim;      
+    } else {
+      saved = !saved ? currentstr : saved + 1;
+      currentstr++;
+      currentdelim++;
+    }
+  }
+}
+
 static inline char *apaz_strstr(char *str, char *subseq) {
   while (*str) {
     if (!apaz_str_equals(str, subseq))
@@ -61,6 +88,7 @@ static inline char *apaz_strstr(char *str, char *subseq) {
 static inline bool apaz_str_contains(char *str, char *subseq) {
   return apaz_strstr(str, subseq) == NULL ? false : true;
 }
+
 
 /*********************/
 /* Type Declarations */
@@ -86,6 +114,7 @@ typedef char *String;
 #define                String_new(len)                        _String_new(len, __LINE__, __func__, __FILE__)
 #define                String_new_of(cstr, len)               _String_new_of(cstr, len, __LINE__, __func__, __FILE__) 
 #define                String_new_of_strlen(cstr)             _String_new_of_strlen(cstr, __LINE__, __func__, __FILE__)
+#define                String_new_fromFile(filePath)          _String_new_fromFile(filePath, __LINE__, __func__, __FILE__)
 #define                String_resize(str, new_size)           _String_resize(str, new_size, __LINE__, __func__, __FILE__)
 #define                String_destroy(str)                    _String_destroy(str, __LINE__, __func__, __FILE__)
 static inline size_t   String_len(String str);
@@ -137,6 +166,41 @@ static inline String _String_new_of_strlen(char *cstr, size_t line, const char* 
   for (int i = 0; i < len; i++)
     nstr[i] = cstr[i];
   return nstr;
+}
+
+static inline String _String_new_fromFile(char *filePath, size_t line, const char* func, const char* file) {
+  FILE *fptr;
+  String buffer;
+  unsigned long fileLen;
+  
+  /* Open file */
+  fptr = fopen(filePath, "rb");
+  if (!fptr) {
+    fprintf(stderr, "Unable to open file %s", filePath);
+    exit(1);
+  }
+
+  /* Get file length */
+  fseek(fptr, 0, SEEK_END);
+  fileLen = ftell(fptr);
+  fseek(fptr, 0, SEEK_SET);
+
+  /* Allocate a String to hold the contents */
+  /* No need to add the null terminator at the end, it's already done by String_new. */
+  buffer = _String_new(fileLen, line, func, file);
+  if (!buffer) {
+    fprintf(stderr, "Memory error, could not allocate to load program.");
+    fclose(fptr);
+    exit(2);
+  }
+
+  /* Copy buffer */
+  /* This could be faster with mmap, but fread is more portable. */
+  fread(buffer, fileLen, 1, fptr);
+  fclose(fptr);
+
+  /* Return a handle to the beginning of the text */
+  return buffer;
 }
 
 static inline String _String_resize(String str, size_t new_size, size_t line, const char* func, const char* file) {
