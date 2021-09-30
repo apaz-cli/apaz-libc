@@ -277,6 +277,7 @@
 // TODO cross product
 // TODO sort
 
+/******************************************************************************/
 #define LIST_DEFINE_MONAD(type, map_type)                                      \
   static inline List_##map_type List_##type##_map_to_##map_type(               \
       List_##type list, map_type (*mapper)(type, void *), void *extra_data) {  \
@@ -322,6 +323,7 @@
       List_##type##_destroy(list);                                             \
                                                                                \
     return retlist;                                                            \
-  }
+  }                                                                            \
+  /****************************************************************************/
 
 #endif // INCLUDE_LISTUTIL

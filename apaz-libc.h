@@ -30,9 +30,9 @@ extern "C" {
 /* LIBRARY INTEROP */
 /*******************/
 
-typedef char* charptr;
+typedef char *charptr;
 
-LIST_DEFINE(charptr);
+//LIST_DEFINE(charptr);
 LIST_DEFINE(char);
 LIST_DEFINE(List_char);
 LIST_DEFINE(String);
@@ -69,23 +69,41 @@ static inline void List_String_print(List_String strlist) {
   puts("]\n");
 }
 
-// Does not destroy the string passed.
+// Doesn't destroy the string passed.
+// The list returned must be destroyed by List_destroy.
 static inline List_String String_split(String str, char *delim) {
-  size_t len = String_len(str);
   size_t delim_len = apaz_strlen(delim);
 
-  List_String sl = List_String_new_cap(10);
+  // First make the list disregarding length information.
+  // Remember that the first one actually has it already.
+  List_String ret = List_String_new_cap(50);
+  ret = List_String_addeq(ret, str);
 
+  // Pull out matches
+  char *match = str;
   while (true) {
-    char *match = apaz_strstr(str, delim);
-    if (match) {
-      ptrdiff_t diff = match - str;
-      sl = List_String_addeq(sl, String_new_of(str, (size_t)diff));
-    } else
+    // Find the next delimiter until we're done
+    match = apaz_strstr(match, delim);
+    if (!match)
       break;
-  }
 
-  return sl;
+    // Skip after the delimiter
+    match += delim_len;
+
+    // Add the result. Note this may result in a string of
+    // length zero to be added. This is intentional.
+    ret = List_String_addeq(ret, match);
+  };
+
+  // Create strings of the right length with the contents.
+  // Convert all but the last one. Then do the last one.
+  // There's always a last one.
+  size_t lastIdx = List_String_len(ret) - 1;
+  for (size_t i = 0; i < lastIdx; i++)
+    ret[i] = String_new_of(ret[i], (ret[i + 1] - delim_len) - ret[i]);
+  ret[lastIdx] = String_new_of_strlen(ret[lastIdx]);
+
+  return ret;
 }
 
 #ifdef __cplusplus
