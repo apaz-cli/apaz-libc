@@ -1,6 +1,6 @@
+#include "../arena.h/arena.h"
 #include "../list.h/list.h"
 #include "../memdebug.h/memdebug.h"
-#include "../arena.h/arena.h"
 
 #ifndef STRUTIL_INCLUDE
 #define STRUTIL_INCLUDE
@@ -11,6 +11,20 @@
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
+
+#if MEMDEBUG
+#define HANDLE_OOM(ptr)                                                        \
+  if (!ptr) {                                                                  \
+    printf("Out of memory on line %zu of %s.\n", __LINE__, __FILE__);          \
+    exit(5);                                                                   \
+    return NULL;                                                               \
+  }
+#else
+#define HANDLE_OOM(ptr)                                                        \
+  if (!ptr) {                                                                  \
+    return NULL;                                                               \
+  }
+#endif
 
 /****************************/
 /* Charptr String Functions */
@@ -41,8 +55,10 @@ static inline int apaz_strcmp(char *s1, char *s2) {
 }
 
 static inline bool apaz_str_startsWith(char *str, char *prefix) {
-  if (!str | !prefix) return false;
-  if (!*prefix | !*str) return false;
+  if (!str | !prefix)
+    return false;
+  if (!*prefix | !*str)
+    return false;
   while (*prefix)
     if (*prefix++ != *str++)
       return false;
@@ -61,28 +77,30 @@ static inline char *apaz_strstr(char *str, const char *subseq) {
   const char *currentdelim = subseq;
 
   while (*str) {
-    if (apaz_str_startsWith(str, (char*)subseq)) return str;
-    else str++;
+    if (apaz_str_startsWith(str, (char *)subseq))
+      return str;
+    else
+      str++;
   }
   return NULL;
-  
-/*
-  while (true) {
-    d = *currentdelim, s = *currentstr;
 
-    if ((!d | !s))
-      return d ? NULL : saved;
-    else if (d == s) {
-      saved = NULL;
-      currentstr++;
-      currentdelim = subseq;
-    } else {
-      saved = !saved ? currentstr : saved + 1;
-      currentstr++;
-      currentdelim++;
+  /*
+    while (true) {
+      d = *currentdelim, s = *currentstr;
+
+      if ((!d | !s))
+        return d ? NULL : saved;
+      else if (d == s) {
+        saved = NULL;
+        currentstr++;
+        currentdelim = subseq;
+      } else {
+        saved = !saved ? currentstr : saved + 1;
+        currentstr++;
+        currentdelim++;
+      }
     }
-  }
-  */
+    */
 }
 
 static inline bool apaz_str_contains(char *str, char *subseq) {
@@ -151,7 +169,7 @@ static inline String String_toLower(String str);
 static inline String _String_new(size_t len, size_t line, const char *func,
                                  const char *file) {
   void *ptr = memdebug_malloc(sizeof(size_t) + len + 1, line, func, file);
-  if (!ptr) return NULL;
+  HANDLE_OOM(ptr);
   *((size_t *)ptr) = len;
   String data = ((String)ptr) + sizeof(size_t);
   data[len] = '\0';
@@ -161,6 +179,7 @@ static inline String _String_new(size_t len, size_t line, const char *func,
 static inline String _String_new_of(char *cstr, size_t len, size_t line,
                                     const char *func, const char *file) {
   String nstr = _String_new(len, line, func, file);
+  HANDLE_OOM(nstr);
   for (int i = 0; i < len; i++)
     nstr[i] = cstr[i];
   return nstr;
@@ -173,6 +192,7 @@ static inline String _String_new_of_strlen(char *cstr, size_t line,
     len++;
 
   String nstr = _String_new(len, line, func, file);
+  HANDLE_OOM(nstr);
   for (int i = 0; i < len; i++)
     nstr[i] = cstr[i];
   return nstr;
@@ -186,12 +206,16 @@ static inline String _String_new_fromFile(char *filePath, size_t line,
 
   /* Open file */
   fptr = fopen(filePath, "rb");
-  if (!fptr) return NULL;
+  if (!fptr)
+    return NULL;
 
   /* Get file length */
-  if (fseek(fptr, 0, SEEK_END) == -1) return NULL;
-  if ((fileLen = ftell(fptr)) == -1) return NULL;
-  if (fseek(fptr, 0, SEEK_SET) == -1) return NULL;
+  if (fseek(fptr, 0, SEEK_END) == -1)
+    return NULL;
+  if ((fileLen = ftell(fptr)) == -1)
+    return NULL;
+  if (fseek(fptr, 0, SEEK_SET) == -1)
+    return NULL;
 
   /* Allocate a String to hold the contents */
   /* No need to add the null terminator at the end, it's already done by
@@ -199,12 +223,13 @@ static inline String _String_new_fromFile(char *filePath, size_t line,
   buffer = _String_new(fileLen, line, func, file);
   if (!buffer) {
     fclose(fptr);
-    return NULL;
+    HANDLE_OOM(buffer);
   }
 
   /* Copy buffer */
   /* This could be faster with mmap, but fread is more portable. */
-  if (fread(buffer, fileLen, 1, fptr) != 1) return NULL;
+  if (fread(buffer, fileLen, 1, fptr) != 1)
+    return NULL;
   fclose(fptr);
 
   /* Return a handle to the beginning of the text */
@@ -215,7 +240,7 @@ static inline String _String_resize(String str, size_t new_size, size_t line,
                                     const char *func, const char *file) {
   void *ptr = str - sizeof(size_t);
   ptr = memdebug_realloc(ptr, sizeof(size_t) + new_size + 1, line, func, file);
-  if (!ptr) return NULL;
+  HANDLE_OOM(ptr);
   *((size_t *)ptr) = new_size;
   String data = ((String)ptr) + sizeof(size_t);
   data[new_size] = '\0';
@@ -223,7 +248,7 @@ static inline String _String_resize(String str, size_t new_size, size_t line,
 }
 
 static inline void _String_setlen_internal(String str, size_t new_len) {
-  size_t* st = ((size_t*)str) - 1;
+  size_t *st = ((size_t *)str) - 1;
   *st = new_len;
   str[new_len] = '\0';
 }
@@ -243,6 +268,7 @@ static inline String _String_add(String str1, String str2, size_t line,
   size_t sl1 = String_len(str1), sl2 = String_len(str2);
   size_t sl3 = sl1 + sl2;
   String ns = _String_new(sl3, line, func, file);
+  HANDLE_OOM(ns);
   size_t i = 0, j = 0;
   for (; i < sl1; i++)
     ns[i] = str1[i];
@@ -259,6 +285,7 @@ static inline String _String_add_destroy(String base, String to_append,
   size_t blen = String_len(base), alen = String_len(to_append);
   size_t nlen = blen + alen;
   base = _String_resize(base, nlen, line, func, file);
+  HANDLE_OOM(base);
   for (size_t i = 0; i < nlen; i++)
     base[blen + i] = to_append[i];
   _String_destroy(to_append, line, func, file);
@@ -276,6 +303,7 @@ static inline void String_copy(String source, String dest) {
 static inline String _String_clone(String to_clone, size_t line,
                                    const char *func, const char *file) {
   String ns = _String_new(String_len(to_clone), line, func, file);
+  HANDLE_OOM(ns);
   String_copy(to_clone, ns);
   return ns;
 }
@@ -284,6 +312,7 @@ static inline String _String_substring(String str, size_t start, size_t end,
                                        size_t line, const char *func,
                                        const char *file) {
   String ns = _String_new(end - start, line, func, file);
+  HANDLE_OOM(ns);
   String_copy(str, ns);
   return ns;
 }
