@@ -5,9 +5,11 @@
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 
+#define LIST_DECLARE(type) typedef type *List_##type;
+
 /******************************************************************************/
 #define LIST_DEFINE(type)                                                      \
-  typedef type *List_##type;                                                   \
+  LIST_DECLARE(type);                                                          \
                                                                                \
   /* Builtin Utility Functions */                                              \
                                                                                \
@@ -22,8 +24,8 @@
                                                                                \
   /**                                                                          \
    * Constructs a new list of the specified capacity. The returned list must   \
-   * be freed with List_##type##_destroy(), as it is allocated in a clever way \
-   * by malloc(). Do not call free() on any List_##type.                       \
+   * be freed with List_##type##_destroy(), as it is allocated in a clever     \
+   * way. Do not call free() on any List_##type.                               \
    *                                                                           \
    * The list returned has current size 0.                                     \
    */                                                                          \

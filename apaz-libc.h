@@ -30,9 +30,15 @@ extern "C" {
 /* LIBRARY INTEROP */
 /*******************/
 
-typedef char *charptr;
+/******************************************************************************/
+#define TYPE_DECLARE(type)                                                     \
+  struct type;                                                                 \
+  typedef struct type type;                                                    \
+  typedef type *type##Ptr;                                                     \
+  LIST_DECLARE(type)                                                           \
+  /****************************************************************************/
 
-//LIST_DEFINE(charptr);
+
 LIST_DEFINE(char);
 LIST_DEFINE(List_char);
 LIST_DEFINE(String);
