@@ -16,6 +16,10 @@ extern "C" {
 #include <string.h>
 #include <unistd.h>
 
+#ifndef APAZ_HANDLE_UNLIKELY_ERRORS
+#define APAZ_HANDLE_UNLIKELY_ERRORS 1
+#endif
+
 #include "memdebug.h/memdebug.h"
 
 #include "threadpool.h/threadpool.h"

@@ -12,6 +12,7 @@
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 
+#if APAZ_HANDLE_UNLIKELY_ERRORS
 #if MEMDEBUG
 #define HANDLE_OOM(ptr)                                                        \
   if (!ptr) {                                                                  \
@@ -24,6 +25,9 @@
   if (!ptr) {                                                                  \
     return NULL;                                                               \
   }
+#endif
+#else // APAZ_HANDLE_UNLIKELY_ERRORS == 0
+#define HANDLE_OOM(ptr) ;
 #endif
 
 /****************************/
@@ -206,20 +210,28 @@ static inline String _String_new_fromFile(char *filePath, size_t line,
 
   /* Open file */
   fptr = fopen(filePath, "rb");
-  if (!fptr)
+  if (!fptr) // Error is likely
     return NULL;
 
-  /* Get file length */
+    /* Get file length */
+#if APAZ_HANDLE_UNLIKELY_ERRORS
   if (fseek(fptr, 0, SEEK_END) == -1)
     return NULL;
   if ((fileLen = ftell(fptr)) == -1)
     return NULL;
   if (fseek(fptr, 0, SEEK_SET) == -1)
     return NULL;
+#else
+  fseek(fptr, 0, SEEK_END);
+  fileLen = ftell(fptr);
+  fseek(fptr, 0, SEEK_SET);
+#endif
 
   /* Allocate a String to hold the contents */
   /* No need to add the null terminator at the end, it's already done by
-   * String_new. */
+   * String_new(). */
+
+  /* We'll call this a likely error as well. The file may be too large. */
   buffer = _String_new(fileLen, line, func, file);
   if (!buffer) {
     fclose(fptr);
@@ -228,8 +240,11 @@ static inline String _String_new_fromFile(char *filePath, size_t line,
 
   /* Copy buffer */
   /* This could be faster with mmap, but fread is more portable. */
-  if (fread(buffer, fileLen, 1, fptr) != 1)
-    return NULL;
+#if APAZ_HANDLE_UNLIKELY_ERRORS
+  if (fread(buffer, fileLen, 1, fptr) != 1) return NULL;
+#else
+  fread(buffer, fileLen, 1, fptr);
+#endif
   fclose(fptr);
 
   /* Return a handle to the beginning of the text */
