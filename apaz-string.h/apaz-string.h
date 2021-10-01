@@ -151,6 +151,7 @@ static inline String String_toLower(String str);
 static inline String _String_new(size_t len, size_t line, const char *func,
                                  const char *file) {
   void *ptr = memdebug_malloc(sizeof(size_t) + len + 1, line, func, file);
+  if (!ptr) return NULL;
   *((size_t *)ptr) = len;
   String data = ((String)ptr) + sizeof(size_t);
   data[len] = '\0';
@@ -185,29 +186,25 @@ static inline String _String_new_fromFile(char *filePath, size_t line,
 
   /* Open file */
   fptr = fopen(filePath, "rb");
-  if (!fptr) {
-    fprintf(stderr, "Unable to open file %s", filePath);
-    exit(1);
-  }
+  if (!fptr) return NULL;
 
   /* Get file length */
-  fseek(fptr, 0, SEEK_END);
-  fileLen = ftell(fptr);
-  fseek(fptr, 0, SEEK_SET);
+  if (fseek(fptr, 0, SEEK_END) == -1) return NULL;
+  if ((fileLen = ftell(fptr)) == -1) return NULL;
+  if (fseek(fptr, 0, SEEK_SET) == -1) return NULL;
 
   /* Allocate a String to hold the contents */
   /* No need to add the null terminator at the end, it's already done by
    * String_new. */
   buffer = _String_new(fileLen, line, func, file);
   if (!buffer) {
-    fprintf(stderr, "Memory error, could not allocate to load program.");
     fclose(fptr);
-    exit(2);
+    return NULL;
   }
 
   /* Copy buffer */
   /* This could be faster with mmap, but fread is more portable. */
-  fread(buffer, fileLen, 1, fptr);
+  if (fread(buffer, fileLen, 1, fptr) != 1) return NULL;
   fclose(fptr);
 
   /* Return a handle to the beginning of the text */
@@ -218,6 +215,7 @@ static inline String _String_resize(String str, size_t new_size, size_t line,
                                     const char *func, const char *file) {
   void *ptr = str - sizeof(size_t);
   ptr = memdebug_realloc(ptr, sizeof(size_t) + new_size + 1, line, func, file);
+  if (!ptr) return NULL;
   *((size_t *)ptr) = new_size;
   String data = ((String)ptr) + sizeof(size_t);
   data[new_size] = '\0';
