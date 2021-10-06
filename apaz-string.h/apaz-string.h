@@ -422,15 +422,13 @@ static inline char *apaz_str_readFile(char *filePath, size_t line,
 
 static inline String _String_new_fromFile(char *filePath, size_t line,
                                           const char *func, const char *file) {
-  String buffer;
-
   /* Open file, get length. */
   apaz_FileInfo info = apaz_openSeekFile(filePath);
   if (!info.fptr)
     return NULL;
 
   /* Allocate a String to hold the contents. Null terminator already present. */
-  buffer = _String_new(info.fileLen, line, func, file);
+  String buffer = _String_new(info.fileLen, line, func, file);
   if (!buffer) {
     fclose(info.fptr);
     HANDLE_OOM(buffer);
