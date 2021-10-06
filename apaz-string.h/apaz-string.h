@@ -1,6 +1,7 @@
 #include "../arena.h/arena.h"
 #include "../list.h/list.h"
 #include "../memdebug.h/memdebug.h"
+#include <bits/types/FILE.h>
 
 #ifndef STRUTIL_INCLUDE
 #define STRUTIL_INCLUDE
@@ -11,6 +12,10 @@
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
+
+#ifndef APAZ_HANDLE_UNLIKELY_ERRORS
+#define APAZ_HANDLE_UNLIKELY_ERRORS 1
+#endif
 
 #if APAZ_HANDLE_UNLIKELY_ERRORS
 #if MEMDEBUG
@@ -202,55 +207,6 @@ static inline String _String_new_of_strlen(char *cstr, size_t line,
   return nstr;
 }
 
-static inline String _String_new_fromFile(char *filePath, size_t line,
-                                          const char *func, const char *file) {
-  FILE *fptr;
-  String buffer;
-  unsigned long fileLen;
-
-  /* Open file */
-  fptr = fopen(filePath, "rb");
-  if (!fptr) // Error is likely
-    return NULL;
-
-    /* Get file length */
-#if APAZ_HANDLE_UNLIKELY_ERRORS
-  if (fseek(fptr, 0, SEEK_END) == -1)
-    return NULL;
-  if ((fileLen = ftell(fptr)) == -1)
-    return NULL;
-  if (fseek(fptr, 0, SEEK_SET) == -1)
-    return NULL;
-#else
-  fseek(fptr, 0, SEEK_END);
-  fileLen = ftell(fptr);
-  fseek(fptr, 0, SEEK_SET);
-#endif
-
-  /* Allocate a String to hold the contents */
-  /* No need to add the null terminator at the end, it's already done by
-   * String_new(). */
-
-  /* We'll call this a likely error as well. The file may be too large. */
-  buffer = _String_new(fileLen, line, func, file);
-  if (!buffer) {
-    fclose(fptr);
-    HANDLE_OOM(buffer);
-  }
-
-  /* Copy buffer */
-  /* This could be faster with mmap, but fread is more portable. */
-#if APAZ_HANDLE_UNLIKELY_ERRORS
-  if (fread(buffer, fileLen, 1, fptr) != 1) return NULL;
-#else
-  fread(buffer, fileLen, 1, fptr);
-#endif
-  fclose(fptr);
-
-  /* Return a handle to the beginning of the text */
-  return buffer;
-}
-
 static inline String _String_resize(String str, size_t new_size, size_t line,
                                     const char *func, const char *file) {
   void *ptr = str - sizeof(size_t);
@@ -386,6 +342,105 @@ static inline String String_toLower(String str) {
   for (; *str; ++str)
     *str = tolower(*str);
   return str;
+}
+
+/****************/
+/* File Reading */
+/****************/
+
+struct apaz_FileInfo {
+  FILE *fptr;
+  long fileLen;
+};
+typedef struct apaz_FileInfo apaz_FileInfo;
+static inline apaz_FileInfo apaz_openSeekFile(char *filePath) {
+  apaz_FileInfo ret = {.fptr = NULL, .fileLen = 0};
+  ret.fptr = fopen(filePath, "rb");
+  if (!ret.fptr) // Error is likely
+    return ret;
+
+    /* Get file length */
+#if APAZ_HANDLE_UNLIKELY_ERRORS
+  if (fseek(ret.fptr, 0, SEEK_END) == -1) {
+    apaz_FileInfo nret = {.fptr = NULL, .fileLen = 0};
+    return nret;
+  }
+  if ((ret.fileLen = ftell(ret.fptr)) == -1) {
+    apaz_FileInfo nret = {.fptr = NULL, .fileLen = 0};
+    return nret;
+  }
+  if (fseek(ret.fptr, 0, SEEK_SET) == -1) {
+    apaz_FileInfo nret = {.fptr = NULL, .fileLen = 0};
+    return nret;
+  }
+#else
+  fseek(ret.fptr, 0, SEEK_END);
+  fileLen = ftell(ret.fptr);
+  fseek(ret.fptr, 0, SEEK_SET);
+#endif
+
+  return ret;
+}
+
+// returns true on error.
+static inline bool apaz_readCloseFile(char *buffer, apaz_FileInfo info) {
+  bool ret = 0;
+/* This could be faster with mmap, but fread is more portable. */
+#if APAZ_HANDLE_UNLIKELY_ERRORS
+  if (fread(buffer, info.fileLen, 1, info.fptr) != 1)
+    ret = 1;
+#else
+  fread(buffer, info.fileLen, 1, info.fptr);
+#endif
+  fclose(info.fptr);
+  return ret;
+}
+
+static inline char *apaz_str_readFile(char *filePath, size_t line,
+                                      const char *func, const char *file) {
+  /* Open file, get length. */
+  apaz_FileInfo info = apaz_openSeekFile(filePath);
+  if (!info.fptr)
+    return NULL;
+
+  /* Allocate memory. */
+  char *buffer = (char *)malloc(info.fileLen + 1);
+  if (!buffer) {
+    fclose(info.fptr);
+    HANDLE_OOM(buffer);
+  }
+
+  /* Copy buffer, close file. */
+  if (apaz_readCloseFile(buffer, info))
+    return NULL;
+
+  /* Write null terminator */
+  buffer[info.fileLen] = '\0';
+
+  return buffer;
+}
+
+static inline String _String_new_fromFile(char *filePath, size_t line,
+                                          const char *func, const char *file) {
+  String buffer;
+
+  /* Open file, get length. */
+  apaz_FileInfo info = apaz_openSeekFile(filePath);
+  if (!info.fptr)
+    return NULL;
+
+  /* Allocate a String to hold the contents. Null terminator already present. */
+  buffer = _String_new(info.fileLen, line, func, file);
+  if (!buffer) {
+    fclose(info.fptr);
+    HANDLE_OOM(buffer);
+  }
+
+  /* Copy buffer, close file. */
+  if (apaz_readCloseFile(buffer, info))
+    return NULL;
+
+  return buffer;
 }
 
 #endif // STRUTIL_INCLUDE
