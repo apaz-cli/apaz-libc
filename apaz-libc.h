@@ -8,6 +8,7 @@ extern "C" {
 
 #include <assert.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -34,6 +35,8 @@ extern "C" {
 /* LIBRARY INTEROP */
 /*******************/
 
+#define ARR_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
+
 /******************************************************************************/
 #define TYPE_DECLARE(type)                                                     \
   struct type;                                                                 \
@@ -41,7 +44,6 @@ extern "C" {
   typedef type *type##Ptr;                                                     \
   LIST_DECLARE(type)                                                           \
   /****************************************************************************/
-
 
 LIST_DEFINE(char);
 LIST_DEFINE(List_char);
