@@ -4,6 +4,7 @@
 #include "../list.h/list.h"
 #include "../memdebug.h/memdebug.h"
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -11,15 +12,9 @@
 #define ARENA_ERRCHECK 1
 #endif
 
-static size_t _arena_size = 0;
-static inline size_t arena_get_page_size() {
-#define ARENA_PAGES 128
-  if (!_arena_size)
-    _arena_size = (size_t)sysconf(_SC_PAGESIZE) * ARENA_PAGES;
-  return _arena_size;
-}
+#define ARENA_SIZE (4096 * 128)
 
-static inline size_t roundToAlignment(size_t n, size_t alignment) {
+static inline size_t _roundToAlignment(size_t n, size_t alignment) {
   return (n + alignment - 1) / alignment * alignment;
 }
 
@@ -33,24 +28,23 @@ struct Arena {
   char *name;
   Arena *next;
 
+  void *buffer;
+  size_t buf_size;
+  size_t buf_cap;
+
 #if MEMDEBUG
   List_MemAlloc given;
 #endif
-
-  size_t buf_cap;
-  size_t buf_size;
-  char buffer[]; // FAM
 };
 
-static inline Arena *Arena_new(char *name) {
-  size_t page_size = arena_get_page_size();
-  size_t buffer_cap = ARENA_PAGES * page_size;
-
-  Arena *arena = (Arena *)malloc(sizeof(Arena));
+static inline Arena *Arena_init(Arena *arena, char *name, void *buffer,
+                                size_t buf_size) {
   arena->name = name;
   arena->next = NULL;
-  arena->buf_cap = buffer_cap - sizeof(Arena);
+
+  arena->buffer = buffer;
   arena->buf_size = 0;
+  arena->buf_cap = buf_size; // yes
 
 #if MEMDEBUG
   arena->given = List_MemAlloc_new_cap(50);
@@ -59,12 +53,39 @@ static inline Arena *Arena_new(char *name) {
   return arena;
 }
 
-static inline Arena *Arena_new_on(Arena *current) {
-  Arena *new_arena = Arena_new(current->name);
-#if MEMDEBUG
-  new_arena->given = List_MemAlloc_new_cap(50);
+#define Arena_new(name) _Arena_new(name, __LINE__, __func__, __FILE__)
+static inline Arena _Arena_new(char *name, size_t line, const char *func,
+                               const char *file) {
+  Arena arena;
+  void *buffer = memdebug_malloc(ARENA_SIZE, line, func, file);
+
+#if APAZ_HANDLE_UNLIKELY_ERRORS && !MEMDEBUG
+  if (!buffer) {
+    printf("Could not initialize arena %s. Passed a null buffer.\n");
+    exit(1);
+  }
 #endif
 
+  Arena_init(&arena, name, buffer, ARENA_SIZE);
+
+  return arena;
+}
+
+static inline Arena *Arena_new_on(Arena *current) {
+
+  // Allocate a new Arena.
+  Arena *new_arena = (Arena *)malloc(sizeof(Arena));
+  size_t reserved = _roundToAlignment(sizeof(Arena), _Alignof(Arena));
+  void *buffer = ((char *)new_arena) + reserved;
+#if APAZ_HANDLE_UNLIKELY_ERRORS && !MEMDEBUG
+  if (!buffer | !new_arena) {
+    printf("Out of memory allocating arena %s.\n");
+    exit(1);
+  }
+#endif
+  Arena_init(new_arena, current->name, buffer, ARENA_SIZE - reserved);
+
+  // Throw it into the LL.
   while (current->next)
     current = current->next;
   current->next = new_arena;
@@ -72,33 +93,53 @@ static inline Arena *Arena_new_on(Arena *current) {
   return new_arena;
 }
 
-static inline void Arena_destroy(Arena *arena) {
-  if (!arena)
-    return;
+static inline void Arena_destroy(Arena *arena, bool free_first_arena,
+                                 bool free_first_buffer) {
 
-  free(arena->buffer);
+  // The first arena could be allocated in any way, hence the args. The
+  // remaining ones are always allocated by Arena_new_on().
+
+  // Destroy the first one.
+  Arena *next = arena->next;
+  if (free_first_buffer)
+    free(arena->buffer);
+  arena->name = NULL;
+  arena->next = NULL;
+  arena->buffer = NULL;
+  arena->buf_cap = 0;
+  arena->buf_size = SIZE_MAX;
 #if MEMDEBUG
   List_MemAlloc_destroy(arena->given);
 #endif
-  Arena_destroy(arena->next);
-  free(arena);
+  if (free_first_arena)
+    free(arena);
+
+  // Destroy the rest.
+  arena = next;
+  while (arena) {
+    Arena *next = arena->next;
+#if MEMDEBUG
+    List_MemAlloc_destroy(arena->given);
+#endif
+    free(arena);
+    arena = next;
+  }
 }
 
-// #define Arena_malloc(arena, bytes) _Arena_malloc(arena, bytes,
-// _Alignof(max_align_t), __LINE__, __func__, __FILE__)
 #define Arena_malloc(arena, bytes)                                             \
-  _Arena_malloc(arena, roundToAlignment(bytes, _Alignof(max_align_t)),         \
-                __LINE__, __func__, __FILE__)
+  _Arena_malloc(arena, bytes, __LINE__, __func__, __FILE__)
 #define Arena_malloc_of(arena, type)                                           \
-  _Arena_malloc(arena, roundToAlignment(sizeof(type), _Alignof(max_align_t)),  \
-                __LINE__, __func__, __FILE__)
-static inline void *_Arena_malloc(Arena *arena, size_t n, size_t line,
+  _Arena_malloc(arena, sizeof(type), __LINE__, __func__, __FILE__)
+static inline void *_Arena_malloc(Arena *arena, size_t num_bytes, size_t line,
                                   const char *func, const char *file) {
+  // Align
+  num_bytes = _roundToAlignment(num_bytes, _Alignof(max_align_t));
+
 #if MEMDEBUG
   if (n > arena->buf_cap) {
     fprintf(stdout,
             ANSI_COLOR_RESET
-            "Cannot allocate " ANSI_COLOR_BYTE "%zu" ANSI_COLOR_RESET
+            "Impossible to allocate " ANSI_COLOR_BYTE "%zu" ANSI_COLOR_RESET
             " bytes on arena: %s. Error inside " ANSI_COLOR_FUNC
             "%s()" ANSI_COLOR_RESET " on line " ANSI_COLOR_LINE
             "%zu" ANSI_COLOR_RESET " in " ANSI_COLOR_FILE "%s" ANSI_COLOR_RESET
@@ -108,20 +149,19 @@ static inline void *_Arena_malloc(Arena *arena, size_t n, size_t line,
   }
 #endif
 
-// Build another arena on this one if it's full.
-#if MEMDEBUG
-#if PRINT_MEMALLOCS
+#if MEMDEBUG && PRINT_MEMALLOCS
   Arena *original = arena;
   size_t prev_size = original->buf_size;
-#endif
+  char *name = original.name;
 #endif
 
-  if (arena->buf_size + n >= arena->buf_cap)
+  // Build another arena on this one if it's full, and use it instead.
+  if (arena->buf_size + num_bytes >= arena->buf_cap)
     arena = Arena_new_on(arena);
 
   // Claim some memory.
-  void *ptr = (void *)(arena->buffer + arena->buf_size);
-  arena->buf_size += n;
+  void *ptr = ((char *)arena->buffer) + arena->buf_size;
+  arena->buf_size = arena->buf_size + num_bytes;
 
 #if MEMDEBUG
   // Keep a record of it
@@ -131,7 +171,6 @@ static inline void *_Arena_malloc(Arena *arena, size_t n, size_t line,
   newalloc.line = line;
   newalloc.func = func;
   newalloc.file = file;
-
   arena->given = List_MemAlloc_addeq(arena->given, newalloc);
 
 #if PRINT_MEMALLOCS
@@ -145,10 +184,11 @@ static inline void *_Arena_malloc(Arena *arena, size_t n, size_t line,
          ") on line " ANSI_COLOR_LINE "%zu" ANSI_COLOR_RESET
          " of " ANSI_COLOR_FUNC "%s()" ANSI_COLOR_RESET " in " ANSI_COLOR_FILE
          "%s" ANSI_COLOR_RESET ".\n",
-         original->name, n, ptr, prev_size, arena->buf_size, line, func, file);
+         name, num_bytes, ptr, prev_size, arena->buf_size, line, func, file);
   fflush(stdout);
 #endif
 #endif
+
   return ptr;
 }
 
@@ -160,10 +200,8 @@ static inline void *_Arena_malloc(Arena *arena, size_t n, size_t line,
              __LINE__, __func__, __FILE__)
 static inline void _Arena_pop(Arena *arena, size_t n, size_t line,
                               const char *func, const char *file) {
-#if MEMDEBUG
-#if PRINT_MEMALLOCS
+#if MEMDEBUG && PRINT_MEMALLOCS
   size_t prev_size = arena->buf_size;
-#endif
 #endif
 
   // Handle underflow
