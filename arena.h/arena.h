@@ -93,15 +93,15 @@ static inline Arena *Arena_new_on(Arena *current) {
   return new_arena;
 }
 
-static inline void Arena_destroy(Arena *arena, bool free_first_arena,
-                                 bool free_first_buffer) {
+static inline void Arena_destroy(Arena *arena, bool free_arena_ptr,
+                                 bool free_buffer_ptr) {
 
   // The first arena could be allocated in any way, hence the args. The
   // remaining ones are always allocated by Arena_new_on().
 
   // Destroy the first one.
   Arena *next = arena->next;
-  if (free_first_buffer)
+  if (free_buffer_ptr)
     free(arena->buffer);
   arena->name = NULL;
   arena->next = NULL;
@@ -111,7 +111,7 @@ static inline void Arena_destroy(Arena *arena, bool free_first_arena,
 #if MEMDEBUG
   List_MemAlloc_destroy(arena->given);
 #endif
-  if (free_first_arena)
+  if (free_arena_ptr)
     free(arena);
 
   // Destroy the rest.
