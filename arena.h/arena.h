@@ -12,11 +12,13 @@
 #define ARENA_ERRCHECK 1
 #endif
 
-#define ARENA_SIZE (4096 * 128)
-
+#define ROUND_TO_ALIGNMENT(n, alignment)
 static inline size_t _roundToAlignment(size_t n, size_t alignment) {
   return (n + alignment - 1) / alignment * alignment;
 }
+
+#define ARENA_SIZE (4096 * 128)
+
 
 #if MEMDEBUG
 LIST_DEFINE(MemAlloc);
@@ -136,7 +138,7 @@ static inline void *_Arena_malloc(Arena *arena, size_t num_bytes, size_t line,
   num_bytes = _roundToAlignment(num_bytes, _Alignof(max_align_t));
 
 #if MEMDEBUG
-  if (n > arena->buf_cap) {
+  if (num_bytes > arena->buf_cap) {
     fprintf(stdout,
             ANSI_COLOR_RESET
             "Impossible to allocate " ANSI_COLOR_BYTE "%zu" ANSI_COLOR_RESET
@@ -144,7 +146,7 @@ static inline void *_Arena_malloc(Arena *arena, size_t num_bytes, size_t line,
             "%s()" ANSI_COLOR_RESET " on line " ANSI_COLOR_LINE
             "%zu" ANSI_COLOR_RESET " in " ANSI_COLOR_FILE "%s" ANSI_COLOR_RESET
             ".\n",
-            n, arena->name, func, line, file);
+            num_bytes, arena->name, func, line, file);
     exit(1);
   }
 #endif
@@ -167,7 +169,7 @@ static inline void *_Arena_malloc(Arena *arena, size_t num_bytes, size_t line,
   // Keep a record of it
   MemAlloc newalloc;
   newalloc.ptr = ptr;
-  newalloc.size = n;
+  newalloc.size = num_bytes;
   newalloc.line = line;
   newalloc.func = func;
   newalloc.file = file;
@@ -193,10 +195,10 @@ static inline void *_Arena_malloc(Arena *arena, size_t num_bytes, size_t line,
 }
 
 #define Arena_pop(arena, bytes)                                                \
-  _Arena_pop(arena, roundToAlignment(bytes, _Alignof(max_align_t)), __LINE__,  \
+  _Arena_pop(arena, _roundToAlignment(bytes, _Alignof(max_align_t)), __LINE__,  \
              __func__, __FILE__)
 #define Arena_pop_of(arena, type)                                              \
-  _Arena_pop(arena, roundToAlignment(sizeof(type), _Alignof(max_align_t)),     \
+  _Arena_pop(arena, _roundToAlignment(sizeof(type), _Alignof(max_align_t)),     \
              __LINE__, __func__, __FILE__)
 static inline void _Arena_pop(Arena *arena, size_t n, size_t line,
                               const char *func, const char *file) {
