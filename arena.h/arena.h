@@ -73,7 +73,7 @@ static inline Arena _Arena_new(char *name, size_t line, const char *func,
   return arena;
 }
 
-static inline Arena *Arena_new_on(Arena *current) {
+static inline Arena *_Arena_new_on(Arena *current) {
 
   // Allocate a new Arena.
   Arena *new_arena = (Arena *)malloc(sizeof(Arena));
@@ -159,7 +159,7 @@ static inline void *_Arena_malloc(Arena *arena, size_t num_bytes, size_t line,
 
   // Build another arena on this one if it's full, and use it instead.
   if (arena->buf_size + num_bytes >= arena->buf_cap)
-    arena = Arena_new_on(arena);
+    arena = _Arena_new_on(arena);
 
   // Claim some memory.
   void *ptr = ((char *)arena->buffer) + arena->buf_size;

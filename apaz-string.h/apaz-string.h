@@ -396,15 +396,17 @@ static inline bool apaz_readCloseFile(char *buffer, apaz_FileInfo info) {
   return ret;
 }
 
-static inline char *apaz_str_readFile(char *filePath, size_t line,
-                                      const char *func, const char *file) {
+#define apaz_str_readFile(filePath)                                            \
+  _apaz_str_readFile(filePath, __LINE__, __func__, __FILE__)
+static inline char *_apaz_str_readFile(char *filePath, size_t line,
+                                       const char *func, const char *file) {
   /* Open file, get length. */
   apaz_FileInfo info = apaz_openSeekFile(filePath);
   if (!info.fptr)
     return NULL;
 
   /* Allocate memory. */
-  char *buffer = (char *)malloc(info.fileLen + 1);
+  char *buffer = (char *)memdebug_malloc(info.fileLen + 1, line, func, file);
   if (!buffer) {
     fclose(info.fptr);
     HANDLE_OOM(buffer);
@@ -420,6 +422,8 @@ static inline char *apaz_str_readFile(char *filePath, size_t line,
   return buffer;
 }
 
+#define String_new_fromFile(filePath)                                          \
+  _String_new_fromFile(filePath, __LINE__, __func__, __FILE__)
 static inline String _String_new_fromFile(char *filePath, size_t line,
                                           const char *func, const char *file) {
   /* Open file, get length. */

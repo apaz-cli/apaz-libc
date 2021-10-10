@@ -31,6 +31,8 @@ extern "C" {
 
 #include "arena.h/arena.h"
 
+#include "apaz-utf8.h/apaz-utf8.h"
+
 /*******************/
 /* LIBRARY INTEROP */
 /*******************/
