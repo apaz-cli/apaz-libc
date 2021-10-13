@@ -37,7 +37,7 @@ _Static_assert(0, "APAZ_PROFILE_MEMDEBUG = 1 is incompatible with APAZ_PROFILE "
 #if APAZ_PROFILE
 
 static clock_t __stopwatch_timer;
-static size_t __stopwatch_runs;
+static size_t __stopwatch_laps;
 static double __stopwatch_resolution;
 static char *__stopwatch_tstr;
 
@@ -47,16 +47,16 @@ static clock_t __stopwatch_stop;
 #define STOPWATCH_INIT(resolution)                                             \
   do {                                                                         \
     __stopwatch_timer = 0;                                                     \
-    __stopwatch_runs = 0;                                                      \
+    __stopwatch_laps = 0;                                                      \
     __stopwatch_resolution = resolution;                                       \
     if (resolution == STOPWATCH_MINUTES)                                       \
-      __stopwatch_tstr = "minutes";                                            \
+      __stopwatch_tstr = "min";                                                \
     else if (resolution == STOPWATCH_SECONDS)                                  \
-      __stopwatch_tstr = "seconds";                                            \
+      __stopwatch_tstr = "s";                                                  \
     else if (resolution == STOPWATCH_MILLISECONDS)                             \
-      __stopwatch_tstr = "milliseonds";                                        \
+      __stopwatch_tstr = "ms";                                                 \
     else if (resolution == STOPWATCH_MICROSECONDS)                             \
-      __stopwatch_tstr = "microseconds";                                       \
+      __stopwatch_tstr = "us";                                                 \
     else {                                                                     \
       fprintf(stdout,                                                          \
               "Please provide a proper argument to STOPWATCH_INIT().");        \
@@ -71,13 +71,22 @@ static clock_t __stopwatch_stop;
   do {                                                                         \
     __stopwatch_stop = clock();                                                \
     __stopwatch_timer += (__stopwatch_stop - __stopwatch_start);               \
-    __stopwatch_runs += 1                                                      \
+    __stopwatch_laps += 1                                                      \
   } while (0);
 #define STOPWATCH_READ()                                                       \
   do {                                                                         \
-    double __time_spent =                                                      \
+    double __time_converted =                                                  \
         (double)(__stopwatch_stop - __stopwatch_start) / CLOCKS_PER_SEC;       \
-    printf("Code took %d reads %f");                                           \
+    double __avg_time = __time_converted / __stopwatch_laps;                   \
+    printf(ANSI_COLOR_YELLOW                                                   \
+           "Stopwatch laps: " ANSI_COLOR_RESET ANSI_COLOR_RED                  \
+           "%zu" ANSI_COLOR_RESET "\n" ANSI_COLOR_YELLOW                       \
+           "Total Time: " ANSI_COLOR_RESET ANSI_COLOR_RED                      \
+           "%.2f %s" ANSI_COLOR_RESET "\n" ANSI_COLOR_YELLOW                   \
+           "Average Time: " ANSI_COLOR_RESET ANSI_COLOR_RED                    \
+           "%.2f %s" ANSI_COLOR_RESET "\n",                                    \
+           __stopwatch_laps, __time_converted, __stopwatch_tstr, __avg_time,   \
+           __stopwatch_tstr);                                                  \
   } while (0);
 
 #define MICROBENCH_MAIN(function, times, resolution)                           \
@@ -99,8 +108,8 @@ static clock_t __stopwatch_stop;
 #define STOPWATCH_READ() ;
 #define MICROBENCH_MAIN(function, times, resolution)                           \
   int main() {                                                                 \
-    fprintf(stderr,                                                            \
-            "Profiling is disabled. Please recompile with APAZ_PROFILE.\n");   \
+    fprintf(stderr, "Profiling is disabled. Please recompile with "            \
+                    "APAZ_PROFILE = 1 and MEMDEBUG = 0.\n");                   \
     exit(1);                                                                   \
   }
 #endif // APAZ_PROFILE
