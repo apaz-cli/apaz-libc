@@ -29,6 +29,7 @@ _Static_assert(0, "APAZ_PROFILE_MEMDEBUG = 1 is incompatible with APAZ_PROFILE "
 #include <assert.h>
 #include <stdio.h>
 #include <time.h>
+#define STOPWATCH_HOURS (CLOCKS_PER_SEC * 60 * 60)
 #define STOPWATCH_MINUTES (CLOCKS_PER_SEC * 60)
 #define STOPWATCH_SECONDS (CLOCKS_PER_SEC)
 #define STOPWATCH_MILLISECONDS (CLOCKS_PER_SEC / 1000.0)
@@ -49,6 +50,8 @@ static clock_t __stopwatch_stop;
     __stopwatch_timer = 0;                                                     \
     __stopwatch_laps = 0;                                                      \
     __stopwatch_resolution = resolution;                                       \
+    if (resolution == STOPWATCH_HOURS)                                         \
+      __stopwatch_tstr = "hours";                                              \
     if (resolution == STOPWATCH_MINUTES)                                       \
       __stopwatch_tstr = "min";                                                \
     else if (resolution == STOPWATCH_SECONDS)                                  \
@@ -59,7 +62,7 @@ static clock_t __stopwatch_stop;
       __stopwatch_tstr = "us";                                                 \
     else {                                                                     \
       fprintf(stdout,                                                          \
-              "Please provide a proper argument to STOPWATCH_INIT().");        \
+              "Please provide a proper argument to STOPWATCH_INIT().\n");      \
       exit(1);                                                                 \
     }                                                                          \
   } while (0);
@@ -71,22 +74,34 @@ static clock_t __stopwatch_stop;
   do {                                                                         \
     __stopwatch_stop = clock();                                                \
     __stopwatch_timer += (__stopwatch_stop - __stopwatch_start);               \
-    __stopwatch_laps += 1                                                      \
+    __stopwatch_laps += 1;                                                     \
   } while (0);
 #define STOPWATCH_READ()                                                       \
   do {                                                                         \
     double __time_converted =                                                  \
-        (double)(__stopwatch_stop - __stopwatch_start) / CLOCKS_PER_SEC;       \
+        (double)__stopwatch_timer / __stopwatch_resolution;                    \
     double __avg_time = __time_converted / __stopwatch_laps;                   \
-    printf(ANSI_COLOR_YELLOW                                                   \
-           "Stopwatch laps: " ANSI_COLOR_RESET ANSI_COLOR_RED                  \
-           "%zu" ANSI_COLOR_RESET "\n" ANSI_COLOR_YELLOW                       \
-           "Total Time: " ANSI_COLOR_RESET ANSI_COLOR_RED                      \
-           "%.2f %s" ANSI_COLOR_RESET "\n" ANSI_COLOR_YELLOW                   \
-           "Average Time: " ANSI_COLOR_RESET ANSI_COLOR_RED                    \
-           "%.2f %s" ANSI_COLOR_RESET "\n",                                    \
-           __stopwatch_laps, __time_converted, __stopwatch_tstr, __avg_time,   \
-           __stopwatch_tstr);                                                  \
+    if (__stopwatch_resolution != STOPWATCH_MICROSECONDS) {                    \
+      printf(ANSI_COLOR_YELLOW                                                 \
+             "Stopwatch laps: " ANSI_COLOR_RESET ANSI_COLOR_RED                \
+             "%zu" ANSI_COLOR_RESET "\n" ANSI_COLOR_YELLOW                     \
+             "Total Time: " ANSI_COLOR_RESET ANSI_COLOR_RED                    \
+             "%.2f %s" ANSI_COLOR_RESET "\n" ANSI_COLOR_YELLOW                 \
+             "Average Time: " ANSI_COLOR_RESET ANSI_COLOR_RED                  \
+             "%.2f %s" ANSI_COLOR_RESET "\n",                                  \
+             __stopwatch_laps, __time_converted, __stopwatch_tstr, __avg_time, \
+             __stopwatch_tstr);                                                \
+    } else {                                                                   \
+      printf(ANSI_COLOR_YELLOW                                                 \
+             "Stopwatch laps: " ANSI_COLOR_RESET ANSI_COLOR_RED                \
+             "%zu" ANSI_COLOR_RESET "\n" ANSI_COLOR_YELLOW                     \
+             "Total Time: " ANSI_COLOR_RESET ANSI_COLOR_RED                    \
+             "%.0f %s" ANSI_COLOR_RESET "\n" ANSI_COLOR_YELLOW                   \
+             "Average Time: " ANSI_COLOR_RESET ANSI_COLOR_RED                  \
+             "%.2f %s" ANSI_COLOR_RESET "\n",                                    \
+             __stopwatch_laps, __time_converted, __stopwatch_tstr, __avg_time, \
+             __stopwatch_tstr);                                                \
+    }                                                                          \
   } while (0);
 
 #define MICROBENCH_MAIN(function, times, resolution)                           \
