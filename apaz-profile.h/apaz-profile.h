@@ -103,5 +103,6 @@ static clock_t __stopwatch_stop;
             "Profiling is disabled. Please recompile with APAZ_PROFILE.\n");   \
     exit(1);                                                                   \
   }
+#endif // APAZ_PROFILE
 
 #endif // PROFILE_INCLUDE
