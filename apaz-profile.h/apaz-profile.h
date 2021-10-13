@@ -91,7 +91,7 @@ static clock_t __stopwatch_stop;
     STOPWATCH_READ();                                                          \
   }
 
-#endif // APAZ_PROFILE
+#else // APAZ_PROFILE
 
 #define STOPWATCH_INIT(resolution) ;
 #define STOPWATCH_START_LAP() ;
