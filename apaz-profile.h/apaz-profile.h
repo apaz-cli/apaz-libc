@@ -81,6 +81,8 @@ static clock_t __stopwatch_stop;
     double __time_converted =                                                  \
         (double)__stopwatch_timer / __stopwatch_resolution;                    \
     double __avg_time = __time_converted / __stopwatch_laps;                   \
+    /* TODO figure out how to handle format and resolution. Probably with      \
+     * preprocessor magic. */                                                  \
     if (__stopwatch_resolution != STOPWATCH_MICROSECONDS) {                    \
       printf(ANSI_COLOR_YELLOW                                                 \
              "Stopwatch laps: " ANSI_COLOR_RESET ANSI_COLOR_RED                \
@@ -96,9 +98,9 @@ static clock_t __stopwatch_stop;
              "Stopwatch laps: " ANSI_COLOR_RESET ANSI_COLOR_RED                \
              "%zu" ANSI_COLOR_RESET "\n" ANSI_COLOR_YELLOW                     \
              "Total Time: " ANSI_COLOR_RESET ANSI_COLOR_RED                    \
-             "%.0f %s" ANSI_COLOR_RESET "\n" ANSI_COLOR_YELLOW                   \
+             "%.0f %s" ANSI_COLOR_RESET "\n" ANSI_COLOR_YELLOW                 \
              "Average Time: " ANSI_COLOR_RESET ANSI_COLOR_RED                  \
-             "%.2f %s" ANSI_COLOR_RESET "\n",                                    \
+             "%.2f %s" ANSI_COLOR_RESET "\n",                                  \
              __stopwatch_laps, __time_converted, __stopwatch_tstr, __avg_time, \
              __stopwatch_tstr);                                                \
     }                                                                          \
