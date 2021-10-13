@@ -124,7 +124,7 @@ static inline utf8_t utf8_decode_next(UTF8State *state) {
   return UTF8_ERROR;
 }
 
-#define UTF8ReadFile(filepath)                                                 \
+#define UTF8ReadFile(filePath)                                                 \
   _UTF8ReadFile(filePath, __LINE__, __func__, __FILE__)
 static inline utf8_t *_UTF8ReadFile(char *filePath, size_t line,
                                     const char *func, const char *file) {

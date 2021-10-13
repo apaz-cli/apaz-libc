@@ -33,6 +33,8 @@ extern "C" {
 
 #include "apaz-utf8.h/apaz-utf8.h"
 
+#include "apaz-profile.h/apaz-profile.h"
+
 /*******************/
 /* LIBRARY INTEROP */
 /*******************/
@@ -55,6 +57,10 @@ LIST_DEFINE_MONAD(char, char);
 LIST_DEFINE_MONAD(String, String);
 LIST_DEFINE_MONAD(char, String);
 LIST_DEFINE_MONAD(String, char);
+
+/********************************/
+/* String Convenience Functions */
+/********************************/
 
 // Destroys the string passed.
 static inline List_char String_to_List_char(String str) {

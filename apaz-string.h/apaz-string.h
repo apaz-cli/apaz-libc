@@ -75,8 +75,6 @@ static inline bool apaz_str_startsWith(char *str, char *prefix) {
 }
 
 /*
- * Not like normal strtok. No global state.
- *
  * Returns the index of the first match, or NULL if none found.
  */
 static inline char *apaz_strstr(char *str, const char *subseq) {
@@ -92,24 +90,6 @@ static inline char *apaz_strstr(char *str, const char *subseq) {
       str++;
   }
   return NULL;
-
-  /*
-    while (true) {
-      d = *currentdelim, s = *currentstr;
-
-      if ((!d | !s))
-        return d ? NULL : saved;
-      else if (d == s) {
-        saved = NULL;
-        currentstr++;
-        currentdelim = subseq;
-      } else {
-        saved = !saved ? currentstr : saved + 1;
-        currentstr++;
-        currentdelim++;
-      }
-    }
-    */
 }
 
 static inline bool apaz_str_contains(char *str, char *subseq) {
@@ -375,7 +355,7 @@ static inline apaz_FileInfo apaz_openSeekFile(char *filePath) {
   }
 #else
   fseek(ret.fptr, 0, SEEK_END);
-  fileLen = ftell(ret.fptr);
+  ret.fileLen = ftell(ret.fptr);
   fseek(ret.fptr, 0, SEEK_SET);
 #endif
 
