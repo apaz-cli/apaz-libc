@@ -1,10 +1,10 @@
+#ifndef STRUTIL_INCLUDE
+#define STRUTIL_INCLUDE
+
 #include "../arena.h/arena.h"
 #include "../list.h/list.h"
 #include "../memdebug.h/memdebug.h"
-#include <bits/types/FILE.h>
 
-#ifndef STRUTIL_INCLUDE
-#define STRUTIL_INCLUDE
 #include <ctype.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -41,7 +41,6 @@
 
 static inline size_t apaz_strlen(char *str) {
   const char *s;
-#undef REG
   for (s = str; *s; ++s)
     ;
   return (s - str);
@@ -328,6 +327,12 @@ static inline String String_toLower(String str) {
 /* File Reading */
 /****************/
 
+struct FileContent {
+  char *content;
+  size_t len;
+};
+typedef struct FileContent FileContent;
+
 struct apaz_FileInfo {
   FILE *fptr;
   long fileLen;
@@ -378,28 +383,35 @@ static inline bool apaz_readCloseFile(char *buffer, apaz_FileInfo info) {
 
 #define apaz_str_readFile(filePath)                                            \
   _apaz_str_readFile(filePath, __LINE__, __func__, __FILE__)
-static inline char *_apaz_str_readFile(char *filePath, size_t line,
-                                       const char *func, const char *file) {
+static inline FileContent _apaz_str_readFile(char *filePath, size_t line,
+                                             const char *func,
+                                             const char *file) {
   /* Open file, get length. */
   apaz_FileInfo info = apaz_openSeekFile(filePath);
-  if (!info.fptr)
-    return NULL;
+  if (!info.fptr) {
+    FileContent c = {.content = NULL, .len = 0};
+    return c;
+  }
 
   /* Allocate memory. */
   char *buffer = (char *)memdebug_malloc(info.fileLen + 1, line, func, file);
   if (!buffer) {
     fclose(info.fptr);
-    HANDLE_OOM(buffer);
+    FileContent c = {.content = NULL, .len = 0};
+    return c;
   }
 
   /* Copy buffer, close file. */
-  if (apaz_readCloseFile(buffer, info))
-    return NULL;
+  if (apaz_readCloseFile(buffer, info)) {
+    FileContent c = {.content = NULL, .len = 0};
+    return c;
+  }
 
   /* Write null terminator */
   buffer[info.fileLen] = '\0';
 
-  return buffer;
+  FileContent c = {.content = buffer, .len = (size_t)info.fileLen};
+  return c;
 }
 
 #define String_new_fromFile(filePath)                                          \

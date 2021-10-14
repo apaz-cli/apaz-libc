@@ -2,8 +2,61 @@
 #define PROFILE_INCLUDE
 
 #include "../memdebug.h/memdebug.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+#if 1
+static inline void
+debug_printf(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vprintf(fmt, args);
+    va_end(args);
+    fflush(stdout);
+}
+
+#else
+static inline void
+debug_printf(const char* fmt, ...) { (void)fmt; }
+#endif
+
 
 #define APAZ_PROFILE 1
+/* Backtraces */
+#ifdef __has_include
+#if __has_include(<execinfo.h>)
+#include <execinfo.h>
+/* Obtain a backtrace and print it to stdout. */
+static inline void print_trace() {
+  const int max_frames = 1000;
+  void *array[max_frames];
+  char **strings;
+  int size, i;
+  size = backtrace(array, max_frames);
+  strings = backtrace_symbols(array, size);
+  if (strings != NULL) {
+    printf("Obtained %d stack frames.\n", size);
+    for (i = 0; i < size; i++)
+      printf("%s\n", strings[i]);
+  }
+  original_free(strings);
+}
+#else
+static inline void print_trace() {
+  fprintf(stderr, "The include file <execinfo.h> could not be found on your "
+                  "system. Backtraces not supported.\n");
+  exit(1);
+}
+#endif
+#else
+static inline void print_trace() {
+  fprintf(stderr, "Could not look for <execinfo.h>, because __has_include() is "
+                  "not defined. Backtraces not supported.\n");
+  exit(1);
+}
+#endif
+
+/* Profiling */
 
 #ifndef APAZ_PROFILE_MEMDEBUG
 #define APAZ_PROFILE_MEMDEBUG 0
@@ -27,8 +80,8 @@ _Static_assert(0, "APAZ_PROFILE_MEMDEBUG = 1 is incompatible with APAZ_PROFILE "
 // Override the decision that it's not to be used with memdebug.
 
 #include <assert.h>
-#include <stdio.h>
 #include <time.h>
+
 #define STOPWATCH_HOURS (CLOCKS_PER_SEC * 60 * 60)
 #define STOPWATCH_MINUTES (CLOCKS_PER_SEC * 60)
 #define STOPWATCH_SECONDS (CLOCKS_PER_SEC)
@@ -82,7 +135,7 @@ static clock_t __stopwatch_stop;
         (double)__stopwatch_timer / __stopwatch_resolution;                    \
     double __avg_time = __time_converted / __stopwatch_laps;                   \
     /* TODO figure out how to handle format and resolution. Probably with      \
-     * preprocessor magic. */                                                  \
+     * preprocessor magic. Currently this only works on my machine. */         \
     if (__stopwatch_resolution != STOPWATCH_MICROSECONDS) {                    \
       printf(ANSI_COLOR_YELLOW                                                 \
              "Stopwatch laps: " ANSI_COLOR_RESET ANSI_COLOR_RED                \

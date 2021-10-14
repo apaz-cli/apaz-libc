@@ -31,9 +31,11 @@ extern "C" {
 
 #include "arena.h/arena.h"
 
+#include "apaz-profile.h/apaz-profile.h"
+
 #include "apaz-utf8.h/apaz-utf8.h"
 
-#include "apaz-profile.h/apaz-profile.h"
+
 
 /*******************/
 /* LIBRARY INTEROP */

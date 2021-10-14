@@ -1,44 +1,7 @@
+#ifndef MEMDEBUG_INCLUDE
+#define MEMDEBUG_INCLUDE
 
-/***********/
-/* Mutexes */
-/***********/
-#ifndef __INCLUDED_MUTEX
-#define __INCLUDED_MUTEX
-
-// All mutex functions return 0 on success
-
-#ifdef _WIN32
-// Use windows.h if compiling for Windows
-#include <Windows.h>
-
-#define mutex_t SRWLOCK
-#define MUTEX_INITIALIZER SRWLOCK_INIT
-static inline int mutex_init(mutex_t* mutex) {
-    InitializeSRWLock(mutex);
-    return 0;
-}
-static inline int mutex_lock(mutex_t* mutex) {
-    AcquireSRWLockExclusive(mutex);
-    return 0;
-}
-static inline int mutex_unlock(mutex_t* mutex) {
-    ReleaseSRWLockExclusive(mutex);
-    return 0;
-}
-static inline int mutex_destroy(mutex_t* mutex) { return 0; }
-
-#else
-// On other platforms use <pthread.h>
-#include <pthread.h>
-
-#define mutex_t pthread_mutex_t
-#define MUTEX_INITIALIZER PTHREAD_MUTEX_INITIALIZER
-static inline int mutex_init(mutex_t* mutex) { return pthread_mutex_init(mutex, NULL); }
-static inline int mutex_lock(mutex_t* mutex) { return pthread_mutex_lock(mutex); }
-static inline int mutex_unlock(mutex_t* mutex) { return pthread_mutex_unlock(mutex); }
-static inline int mutex_destroy(mutex_t* mutex) { return pthread_mutex_destroy(mutex); }
-#endif
-#endif  // End mutex include guard
+#include "../apaz-mutex.h/apaz-mutex.h"
 
 /*******************************/
 /* Pretty ANSI Terminal Colors */
@@ -80,11 +43,6 @@ static inline int mutex_destroy(mutex_t* mutex) { return pthread_mutex_destroy(m
 #define ANSI_COLOR_FUNC ANSI_COLOR_YELLOW
 #define ANSI_COLOR_LINE ANSI_COLOR_CYAN
 
-/************/
-/* MEMDEBUG */
-/************/
-#ifndef __INCLUDED_MEMDEBUG
-#define __INCLUDED_MEMDEBUG
 
 #ifndef MEMDEBUG
 #define MEMDEBUG 0
@@ -618,4 +576,4 @@ static inline void   print_heap() {}
 static inline void   low_mem_print_heap() {}
 static inline size_t get_num_allocs() { return 0; }
 #endif
-#endif  // Include guard
+#endif  // MEMDEBUG_INCLUDE
