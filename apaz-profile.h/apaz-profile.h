@@ -5,21 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#if 1
-static inline void
-debug_printf(const char* fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    vprintf(fmt, args);
-    va_end(args);
-    fflush(stdout);
-}
-
-#else
-static inline void
-debug_printf(const char* fmt, ...) { (void)fmt; }
-#endif
-
 
 #define APAZ_PROFILE 1
 /* Backtraces */
