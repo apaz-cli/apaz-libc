@@ -40,13 +40,13 @@ struct Arena {
 };
 
 static inline Arena *Arena_init(Arena *arena, char *name, void *buffer,
-                                size_t buf_size) {
+                                size_t buf_cap) {
   arena->name = name;
   arena->next = NULL;
 
   arena->buffer = buffer;
   arena->buf_size = 0;
-  arena->buf_cap = buf_size; // yes
+  arena->buf_cap = buf_cap; // yes
 
 #if MEMDEBUG
   arena->given = List_MemAlloc_new_cap(50);
