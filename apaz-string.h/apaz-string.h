@@ -77,11 +77,6 @@ static inline bool apaz_str_startsWith(char *str, char *prefix) {
  * Returns the index of the first match, or NULL if none found.
  */
 static inline char *apaz_strstr(char *str, const char *subseq) {
-  char d, s;
-  char *saved = NULL;
-  char *currentstr = str;
-  const char *currentdelim = subseq;
-
   while (*str) {
     if (apaz_str_startsWith(str, (char *)subseq))
       return str;
