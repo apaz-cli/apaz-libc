@@ -4,7 +4,7 @@
 #include "../memdebug.h/memdebug.h"
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <string.h>
 
 #define APAZ_PROFILE 1
 /* Backtraces */
@@ -12,33 +12,51 @@
 #if __has_include(<execinfo.h>)
 #include <execinfo.h>
 /* Obtain a backtrace and print it to stdout. */
-static inline void print_trace() {
-  const int max_frames = 1000;
-  void *array[max_frames];
-  char **strings;
-  int size, i;
-  size = backtrace(array, max_frames);
-  strings = backtrace_symbols(array, size);
-  if (strings != NULL) {
-    printf("Obtained %d stack frames.\n", size);
-    for (i = 0; i < size; i++)
-      printf("%s\n", strings[i]);
-  }
-  original_free(strings);
-}
+#define print_trace()                                                          \
+  do {                                                                         \
+    const int __apaz_max_frames = 1000;                                        \
+    void *__apaz_symbol_arr[__apaz_max_frames];                                \
+    char **__apaz_symbol_strings = NULL;                                       \
+    int __apaz_num_addrs, __apaz_i;                                            \
+    __apaz_num_addrs = backtrace(__apaz_symbol_arr, __apaz_max_frames);        \
+    __apaz_symbol_strings =                                                    \
+        backtrace_symbols(__apaz_symbol_arr, __apaz_num_addrs);                \
+    if (__apaz_symbol_strings) {                                               \
+      fprintf(stderr, "Obtained %d stack frames.\n", __apaz_num_addrs);        \
+      fflush(stderr);                                                          \
+      for (__apaz_i = 0; __apaz_i < __apaz_num_addrs; __apaz_i++) {            \
+        /* Extract the function name */                                        \
+        char *__apaz_str = __apaz_symbol_strings[__apaz_i];                    \
+        __apaz_str = __apaz_str + strlen(__apaz_str);                          \
+        while (*__apaz_str != '+')                                             \
+          __apaz_str--;                                                        \
+        *__apaz_str = '\0';                                                    \
+        while (*__apaz_str != '(')                                             \
+          __apaz_str--;                                                        \
+        __apaz_str++;                                                          \
+                                                                               \
+        fprintf(stderr, "%s()\n", __apaz_str);                                 \
+        fflush(stderr);                                                        \
+      }                                                                        \
+      original_free(__apaz_symbol_strings);                                    \
+    }                                                                          \
+  } while (0);
 #else
-static inline void print_trace() {
-  fprintf(stderr, "The include file <execinfo.h> could not be found on your "
-                  "system. Backtraces not supported.\n");
-  exit(1);
-}
+#define print_trace()                                                          \
+  do {                                                                         \
+    fprintf(stderr, "The include file <execinfo.h> could not be found on "     \
+                    "your system. Backtraces not supported.\n");               \
+    exit(1);                                                                   \
+  }
 #endif
 #else
-static inline void print_trace() {
-  fprintf(stderr, "Could not look for <execinfo.h>, because __has_include() is "
-                  "not defined. Backtraces not supported.\n");
-  exit(1);
-}
+#define print_trace()                                                          \
+  do {                                                                         \
+    fprintf(stderr,                                                            \
+            "Could not look for <execinfo.h>, because __has_include() is "     \
+            "not defined. Backtraces not supported.\n");                       \
+    exit(1);                                                                   \
+  }
 #endif
 
 /* Profiling */
