@@ -8,6 +8,12 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#ifndef __cplusplus
+#define ALIGNOF(type) _Alignof(type)
+#else
+#define ALIGNOF(type) alignof(type)
+#endif
+
 #ifndef ARENA_ERRCHECK
 #define ARENA_ERRCHECK 1
 #endif
@@ -77,7 +83,7 @@ static inline Arena *_Arena_new_on(Arena *current) {
 
   // Allocate a new Arena.
   Arena *new_arena = (Arena *)malloc(sizeof(Arena));
-  size_t reserved = _roundToAlignment(sizeof(Arena), _Alignof(Arena));
+  size_t reserved = _roundToAlignment(sizeof(Arena), ALIGNOF(Arena));
   void *buffer = ((char *)new_arena) + reserved;
 #if APAZ_HANDLE_UNLIKELY_ERRORS && !MEMDEBUG
   if (!buffer | !new_arena) {
