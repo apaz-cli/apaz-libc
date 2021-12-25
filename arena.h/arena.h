@@ -141,7 +141,7 @@ static inline void Arena_destroy(Arena *arena, bool free_arena_ptr,
 static inline void *_Arena_malloc(Arena *arena, size_t num_bytes, size_t line,
                                   const char *func, const char *file) {
   // Align
-  num_bytes = _roundToAlignment(num_bytes, _Alignof(max_align_t));
+  num_bytes = _roundToAlignment(num_bytes, ALIGNOF(max_align_t));
 
 #if MEMDEBUG
   if (num_bytes > arena->buf_cap) {
@@ -201,10 +201,10 @@ static inline void *_Arena_malloc(Arena *arena, size_t num_bytes, size_t line,
 }
 
 #define Arena_pop(arena, bytes)                                                \
-  _Arena_pop(arena, _roundToAlignment(bytes, _Alignof(max_align_t)), __LINE__,  \
+  _Arena_pop(arena, _roundToAlignment(bytes, ALIGNOF(max_align_t)), __LINE__,  \
              __func__, __FILE__)
 #define Arena_pop_of(arena, type)                                              \
-  _Arena_pop(arena, _roundToAlignment(sizeof(type), _Alignof(max_align_t)),     \
+  _Arena_pop(arena, _roundToAlignment(sizeof(type), ALIGNOF(max_align_t)),     \
              __LINE__, __func__, __FILE__)
 static inline void _Arena_pop(Arena *arena, size_t n, size_t line,
                               const char *func, const char *file) {
