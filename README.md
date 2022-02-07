@@ -165,11 +165,11 @@ A monadic list library utilizing fat pointers to retain `[]` syntax.
 #include <stdio.h>
 #include <stdlib.h>
 
-static inline size_t factorial(size_t x, void *extra_data) {
-  return x ? x * factorial(x - 1, extra_data) : 1;
+static inline size_t factorial(size_t x) {
+  return x ? x * factorial(x - 1) : 1;
 }
 
-static inline void print_size_t(size_t to_print, void *extra_data) {
+static inline void print_size(size_t to_print) {
   printf("%zu\n", to_print);
 }
 
@@ -209,8 +209,8 @@ int main() {
   // foreach().
   // These operations destroy the list passed to them, and if they return a new
   // list they re-use the space allocated for the old one where possible.
-  cloned = List_size_t_map_to_size_t(cloned, factorial, NULL);
-  List_size_t_foreach(cloned, print_size_t, NULL);
+  cloned = List_size_t_map_to_size_t(cloned, factorial);
+  List_size_t_foreach(cloned, print_size);
 }
 ```
 
