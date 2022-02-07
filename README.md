@@ -3,7 +3,7 @@
 
 This library is composed of 4 other libraries, with more to come.
 
-<br/>
+<br>
 
 ### Jump to Library Examples:
 
@@ -12,7 +12,7 @@ This library is composed of 4 other libraries, with more to come.
 * [list.h](#list.h)
 * [apaz-string.h](#apaz-string.h)
 
-<br/>
+<br>
 
 # memdebug.h <a name="memdebug.h"></a>
 A drop-in replacement for `malloc` that wraps `malloc()`, `realloc()`, and `free()` for the remainder of the translation unit for easy memory debugging.
@@ -32,7 +32,7 @@ A drop-in replacement for `malloc` that wraps `malloc()`, `realloc()`, and `free
 
 #define MEMDEBUG 1
 #define PRINT_MEMALLOCS 1
-#include "apaz-libc/apaz-libc.h"
+#include <apaz-libc/memdebug.h>
 
 int main() {
     // Print debug messages on allocation/free
@@ -58,39 +58,40 @@ int main() {
 ```
 apaz@apaz-laptop:~/git/memdebug.h$ gcc test.c
 apaz@apaz-laptop:~/git/memdebug.h$ ./a.out
-malloc(1) -> 0x56120d0a7260 on line 19 of main() in test.c.
-realloc(0x56120d0a7260, 10) -> 0x56120d0a7260 on line 20 of main() in test.c.
-free(0x56120d0a7260) on line 21 of main() in test.c.
-malloc(20) -> 0x56120d0a7260 on line 24 of main() in test.c.
-malloc(25) -> 0x56120d0a7690 on line 25 of main() in test.c.
+malloc(1) -> 0x557d1f5742a0 on line 7 of main() in memdebug_test.c.
+realloc(0x557d1f5742a0, 10) -> 0x557d1f5742a0 on line 8 of main() in memdebug_test.c.
+free(0x557d1f5742a0) on line 9 of main() in memdebug_test.c.
+malloc(20) -> 0x557d1f5742a0 on line 12 of main() in memdebug_test.c.
+malloc(25) -> 0x557d1f5746d0 on line 13 of main() in memdebug_test.c.
 
 *************
 * HEAP DUMP *
 *************
-1 pointer has been allocated totalling 20 bytes in file: test.c in function: main on line: 24.
-1 pointer has been allocated totalling 25 bytes in file: test.c in function: main on line: 25.
+1 pointer has been allocated totalling 20 bytes in file: memdebug_test.c in function: main() on line: 12.
+1 pointer has been allocated totalling 25 bytes in file: memdebug_test.c in function: main() on line: 13.
 
-Total Heap size in bytes: 45
-Total number of heap allocations: 2
+Total size in bytes: 45
+Total number of allocations: 2
 
 
 
 MEMORY PANIC: Tried to free() an invalid pointer.
 Pointer: 0x1
-On line: 34
+On line: 21
 In function: main()
-In file: test.c
+In file: memdebug_test.c
 Aborted.
 ```
 
-<br/>
+<br>
 
 # threadpool.h <a name="threadpool.h"></a>
 A minimal threadpool implemented from scratch in C using `pthread`s.
 
 ## Example Usage:
 ```c
-#include "apaz-libc/apaz-libc.h"
+#include <apaz-libc/threadpool.h>
+#include <stdio.h>
 
 void say_hello(void* voidptr) {
     printf("Hello from task #%i.\n", *((int*)voidptr));
@@ -113,7 +114,7 @@ int main() {
         // As always, if two threads try to access the same variable
         // at the same time without a mutex, bad things happen.
 
-        if (!Threadpool_exectask(&pool, nothing, intptr)) {
+        if (!Threadpool_exectask(&pool, say_hello, intptr)) {
             // If exectask returns 0, the pool rejected the work
             // because it is already shut down.
             // It can never happen here, but if it's a possibility
@@ -160,7 +161,9 @@ A monadic list library utilizing fat pointers to retain `[]` syntax.
 
 ## Example Usage:
 ```c
-#include <apaz-libc.h>
+#include <apaz-libc/list.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 static inline size_t factorial(size_t x, void *extra_data) {
   return x ? x * factorial(x - 1, extra_data) : 1;
@@ -192,12 +195,13 @@ int main() {
   list = List_size_t_addeq(list, 12);
 
   // You can also peek and pop.
-  size_t peeked = *List_size_t_peek(list);
+  size_t peeked = List_size_t_peek(list);
   List_size_t_pop(list);
 
   // You can clone lists too.
   // Lists are heap allocated, so destroy them when you're done with them.
-  // Don't try to use normal free() through. Use List_##type##_destroy() instead.
+  // Don't try to use normal free() through. Use List_##type##_destroy()
+  // instead.
   List_size_t cloned = List_size_t_clone(list);
   List_size_t_destroy(list);
 
@@ -225,9 +229,116 @@ int main() {
 39916800
 ```
 
+<br>
+
 # apaz-string.h <a name="apaz-string.h"></a>
 
 A string library that utilizes fat pointers to retain the `[]` syntax for accessing characters, but also stores length information.
 
+While this isn't any better than ordinary cstrings for optimization, as long as you're not using it with lists, it's great for syntax. For a string implementation with small string optimization, see the one in the [Stilts standard library](https://github.com/apaz-cli/Stilts/blob/master/stdlib/Native/Builtins/StiltsString.h).
+
+With the "the syntax sucks for lists" in mind, check out the example below.
 
 ## Example Usage:
+```c
+#define MEMDEBUG 1
+#define PRINT_MEMALLOCS 1
+#include <apaz-libc.h>
+
+/* The string module can make use of the list and memdebug modules. */
+void String_printAndDestroy(String str) {
+  String_println(str);
+  String_destroy(str);
+}
+
+int main() {
+  /* Basic usage looks great. Just do string stuff. */
+  String s = String_new_of_strlen("I can make Strings");
+  String_println(s);
+  s = String_toUpper(s);
+  assert(String_endsWith(s, "STRINGS"));
+  String_println(s);
+
+  /* There's also all the convenience methods you're used to, like split(). */
+  List_String l = String_split(s, " ");
+  String_destroy(s);
+
+  l = List_String_map_to_String(l, String_toLower);
+
+  /* We can still get its length, add items, and address it like we would a
+   * fixed size array. However, this is all very tedious of course. Also, we
+   * need to pay very careful attention that we free all the memory. */
+  l = List_String_addeq(l, String_new_of_strlen("!"));
+
+  /* Since it returns a list.h list, we can use monads.
+    We can destroy all the strings in the list inside the monad. */
+  List_String_foreach(l, String_printAndDestroy);
+
+  print_heap();
+  puts("All memory cleaned up.");
+}
+```
+
+
+## Output
+```
+malloc(27) -> 0x55f5bef8f2a0 on line 13 of main() in string_test.c.
+I can make Strings
+I CAN MAKE STRINGS
+malloc(416) -> 0x55f5bef8f6e0 on line 54 of List_String_new_cap() in /usr/include/apaz-libc.h.
+malloc(10) -> 0x55f5bef8f890 on line 123 of String_split() in /usr/include/apaz-libc.h.
+malloc(12) -> 0x55f5bef8f8b0 on line 123 of String_split() in /usr/include/apaz-libc.h.
+malloc(13) -> 0x55f5bef8f8d0 on line 123 of String_split() in /usr/include/apaz-libc.h.
+malloc(16) -> 0x55f5bef8f8f0 on line 124 of String_split() in /usr/include/apaz-libc.h.
+free(0x55f5bef8f2a0) on line 21 of main() in string_test.c.
+malloc(48) -> 0x55f5bef8f910 on line 54 of List_String_new_len() in /usr/include/apaz-libc.h.
+free(0x55f5bef8f6e0) on line 54 of List_String_destroy() in /usr/include/apaz-libc.h.
+malloc(10) -> 0x55f5bef8f950 on line 28 of main() in string_test.c.
+realloc(0x55f5bef8f910, 192) -> 0x55f5bef8f970 on line 54 of List_String_resize() in /usr/include/apaz-libc.h.
+i
+free(0x55f5bef8f890) on line 8 of String_printAndDestroy() in string_test.c.
+can
+free(0x55f5bef8f8b0) on line 8 of String_printAndDestroy() in string_test.c.
+make
+free(0x55f5bef8f8d0) on line 8 of String_printAndDestroy() in string_test.c.
+strings
+free(0x55f5bef8f8f0) on line 8 of String_printAndDestroy() in string_test.c.
+!
+free(0x55f5bef8f950) on line 8 of String_printAndDestroy() in string_test.c.
+free(0x55f5bef8f970) on line 54 of List_String_destroy() in /usr/include/apaz-libc.h.
+apaz@apaz-laptop:~/git/apaz-libc$ sh install.sh && gcc string_test.c && ./a.out 
+malloc(27) -> 0x5564aac6d2a0 on line 13 of main() in string_test.c.
+I can make Strings
+I CAN MAKE STRINGS
+malloc(416) -> 0x5564aac6d6e0 on line 54 of List_String_new_cap() in /usr/include/apaz-libc.h.
+malloc(10) -> 0x5564aac6d890 on line 123 of String_split() in /usr/include/apaz-libc.h.
+malloc(12) -> 0x5564aac6d8b0 on line 123 of String_split() in /usr/include/apaz-libc.h.
+malloc(13) -> 0x5564aac6d8d0 on line 123 of String_split() in /usr/include/apaz-libc.h.
+malloc(16) -> 0x5564aac6d8f0 on line 124 of String_split() in /usr/include/apaz-libc.h.
+free(0x5564aac6d2a0) on line 21 of main() in string_test.c.
+malloc(48) -> 0x5564aac6d910 on line 54 of List_String_new_len() in /usr/include/apaz-libc.h.
+free(0x5564aac6d6e0) on line 54 of List_String_destroy() in /usr/include/apaz-libc.h.
+malloc(10) -> 0x5564aac6d950 on line 28 of main() in string_test.c.
+realloc(0x5564aac6d910, 192) -> 0x5564aac6d970 on line 54 of List_String_resize() in /usr/include/apaz-libc.h.
+i
+free(0x5564aac6d890) on line 8 of String_printAndDestroy() in string_test.c.
+can
+free(0x5564aac6d8b0) on line 8 of String_printAndDestroy() in string_test.c.
+make
+free(0x5564aac6d8d0) on line 8 of String_printAndDestroy() in string_test.c.
+strings
+free(0x5564aac6d8f0) on line 8 of String_printAndDestroy() in string_test.c.
+!
+free(0x5564aac6d950) on line 8 of String_printAndDestroy() in string_test.c.
+free(0x5564aac6d970) on line 54 of List_String_destroy() in /usr/include/apaz-libc.h.
+
+*************
+* HEAP DUMP *
+*************
+
+Total size in bytes: 0
+Total number of allocations: 0
+
+
+All memory cleaned up.
+```

@@ -1,7 +1,7 @@
 #ifndef MEMDEBUG_INCLUDE
 #define MEMDEBUG_INCLUDE
 
-#include "../apaz-mutex.h/apaz-mutex.h"
+#include "mutex.h"
 
 /*******************************/
 /* Pretty ANSI Terminal Colors */
@@ -296,7 +296,7 @@ print_alloc_summary(size_t total_ptrs_at_location, size_t total_bytes_at_locatio
             ANSI_COLOR_PNTR "%zu pointer has been allocated" ANSI_COLOR_RESET
                 ANSI_COLOR_BYTE " totalling %zu bytes" ANSI_COLOR_RESET
                     ANSI_COLOR_FILE " in file: %s" ANSI_COLOR_RESET
-                        ANSI_COLOR_FUNC " in function: %s" ANSI_COLOR_RESET
+                        ANSI_COLOR_FUNC " in function: %s()" ANSI_COLOR_RESET
                             ANSI_COLOR_LINE " on line: %zu.\n" ANSI_COLOR_RESET,
             total_ptrs_at_location, total_bytes_at_location, location_file, location_func, location_line);
     } else {
@@ -304,7 +304,7 @@ print_alloc_summary(size_t total_ptrs_at_location, size_t total_bytes_at_locatio
             ANSI_COLOR_PNTR "%zu pointers have been allocated" ANSI_COLOR_RESET
                 ANSI_COLOR_BYTE " totalling %zu bytes" ANSI_COLOR_RESET
                     ANSI_COLOR_FILE " in file: %s" ANSI_COLOR_RESET
-                        ANSI_COLOR_FUNC " in function: %s" ANSI_COLOR_RESET
+                        ANSI_COLOR_FUNC " in function: %s()" ANSI_COLOR_RESET
                             ANSI_COLOR_LINE " on line: %zu.\n" ANSI_COLOR_RESET,
             total_ptrs_at_location, total_bytes_at_location, location_file, location_func, location_line);
     }

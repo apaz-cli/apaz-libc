@@ -21,21 +21,19 @@ extern "C" {
 #define APAZ_HANDLE_UNLIKELY_ERRORS 1
 #endif
 
-#include "memdebug.h/memdebug.h"
+#include "apaz-libc/memdebug.h"
 
-#include "threadpool.h/threadpool.h"
+#include "apaz-libc/threadpool.h"
 
-#include "list.h/list.h"
+#include "apaz-libc/list.h"
 
-#include "apaz-string.h/apaz-string.h"
+#include "apaz-libc/string.h"
 
-#include "arena.h/arena.h"
+#include "apaz-libc/arena.h"
 
-#include "apaz-profile.h/apaz-profile.h"
+#include "apaz-libc/profile.h"
 
-#include "apaz-utf8.h/apaz-utf8.h"
-
-
+#include "apaz-libc/utf8.h"
 
 /*******************/
 /* LIBRARY INTEROP */

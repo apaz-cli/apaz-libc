@@ -1,7 +1,7 @@
 #ifndef UTF8_INCLUDE
 #define UTF8_INCLUDE
 
-#include "../apaz-string.h/apaz-string.h"
+#include "string.h"
 
 #include <inttypes.h>
 #include <limits.h>

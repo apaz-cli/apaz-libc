@@ -1,7 +1,7 @@
 #ifndef PROFILE_INCLUDE
 #define PROFILE_INCLUDE
 
-#include "../memdebug.h/memdebug.h"
+#include "memdebug.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

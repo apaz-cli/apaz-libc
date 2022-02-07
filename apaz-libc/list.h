@@ -5,7 +5,10 @@
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 
-#define LIST_DECLARE(type) typedef type *List_##type;
+#define LIST_DECLARE(type)                                                     \
+  typedef type *List_##type;                                                   \
+  _Static_assert(((2 * sizeof(size_t)) % _Alignof(type)) == 0,                 \
+                 "Contents of " #type " list would be misalligned.");
 
 /******************************************************************************/
 #define LIST_DEFINE(type)                                                      \
@@ -254,7 +257,18 @@
      have one type attached to them are defined here. The ones that have two   \
      are defined in the next macro, not this one. */                           \
                                                                                \
-  static inline List_##type List_##type##_filter(                              \
+  static inline List_##type List_##type##_filter(List_##type list,             \
+                                                 bool (*filter_fn)(type)) {    \
+    /* Since the list would be destroyed anyway, it can be reused. */          \
+    size_t len = List_##type##_len(list);                                      \
+    for (size_t i = 0, retained = 0; i < len; i++) {                           \
+      if (filter_fn(list[i]))                                                  \
+        list[retained++] = list[i];                                            \
+      __List_##type##_setlen(list, retained);                                  \
+    }                                                                          \
+    return list;                                                               \
+  }                                                                            \
+  static inline List_##type List_##type##_filter_extra(                        \
       List_##type list, bool (*filter_fn)(type, void *), void *extra_data) {   \
     /* Since the list would be destroyed anyway, it can be reused. */          \
     size_t len = List_##type##_len(list);                                      \
@@ -266,14 +280,21 @@
     return list;                                                               \
   }                                                                            \
                                                                                \
-  static inline void List_##type##_foreach(                                    \
+  static inline void List_##type##_foreach(List_##type list,                   \
+                                           void (*action_fn)(type)) {          \
+    size_t len = List_##type##_len(list);                                      \
+    for (size_t i = 0; i < len; i++)                                           \
+      action_fn(list[i]);                                                      \
+    List_##type##_destroy(list);                                               \
+  }                                                                            \
+  static inline void List_##type##_foreach_extra(                              \
       List_##type list, void (*action_fn)(type, void *), void *extra_data) {   \
     size_t len = List_##type##_len(list);                                      \
     for (size_t i = 0; i < len; i++)                                           \
       action_fn(list[i], extra_data);                                          \
     List_##type##_destroy(list);                                               \
-  }                                                                            \
-  /****************************************************************************/
+  }
+/****************************************************************************/
 
 // TODO figure out how to get zip() working.
 // TODO cross product
@@ -282,6 +303,15 @@
 /******************************************************************************/
 #define LIST_DEFINE_MONAD(type, map_type)                                      \
   static inline List_##map_type List_##type##_map_to_##map_type(               \
+      List_##type list, map_type (*mapper)(type)) {                            \
+    List_##map_type nl = List_##map_type##_new_len(List_##type##_len(list));   \
+    size_t len = List_##type##_len(list);                                      \
+    for (size_t i = 0; i < len; i++)                                           \
+      nl[i] = mapper(list[i]);                                                 \
+    List_##type##_destroy(list);                                               \
+    return nl;                                                                 \
+  }                                                                            \
+  static inline List_##map_type List_##type##_map_to_##map_type##_extra(         \
       List_##type list, map_type (*mapper)(type, void *), void *extra_data) {  \
     List_##map_type nl = List_##map_type##_new_len(List_##type##_len(list));   \
     size_t len = List_##type##_len(list);                                      \
@@ -292,6 +322,41 @@
   }                                                                            \
                                                                                \
   static inline List_##map_type List_##type##_flatmap_to_##map_type(           \
+      List_##type list, List_##map_type (*mapper)(type, void *),               \
+      void *extra_data) {                                                      \
+                                                                               \
+    /* Map each element to a list, shove the lists into a list, and            \
+       count their combined length.*/                                          \
+    size_t nll_len = List_##type##_len(list), size_sum = 0;                    \
+    List_##map_type nll[nll_len];                                              \
+    for (size_t i = 0; i < nll_len; i++) {                                     \
+      List_##map_type ml = mapper(list[i], extra_data);                        \
+      size_sum += List_##map_type##_len(ml);                                   \
+      nll[i] = ml;                                                             \
+    }                                                                          \
+                                                                               \
+    /* Re-use the original buffer as the output buffer if                      \
+       it's large enough. */                                                   \
+    bool big_enough = sizeof(map_type) * size_sum <= sizeof(type) * nll_len;   \
+    List_##map_type retlist = big_enough                                       \
+                                  ? (List_##map_type)list                      \
+                                  : List_##map_type##_new_len(size_sum);       \
+                                                                               \
+    /* Flatten and copy the results into the output buffer. */                 \
+    for (size_t i = 0; i < nll_len; i++) {                                     \
+      size_t sublen = List_##map_type##_len(nll[i]);                           \
+      for (size_t j = 0; j < sublen; j++)                                      \
+        retlist[j] = nll[i][j];                                                \
+      List_##map_type##_destroy(nll[i]);                                       \
+    }                                                                          \
+                                                                               \
+    /* If the original list is not being re-used, destroy it. */               \
+    if (!big_enough)                                                           \
+      List_##type##_destroy(list);                                             \
+                                                                               \
+    return retlist;                                                            \
+  }                                                                            \
+  static inline List_##map_type List_##type##_flatmap_to_##map_type##_extra(   \
       List_##type list, List_##map_type (*mapper)(type, void *),               \
       void *extra_data) {                                                      \
                                                                                \

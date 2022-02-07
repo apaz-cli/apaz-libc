@@ -1,8 +1,8 @@
 #ifndef ARENA_INCLUDE
 #define ARENA_INCLUDE
 
-#include "../list.h/list.h"
-#include "../memdebug.h/memdebug.h"
+#include "list.h"
+#include "memdebug.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -160,7 +160,7 @@ static inline void *_Arena_malloc(Arena *arena, size_t num_bytes, size_t line,
 #if MEMDEBUG && PRINT_MEMALLOCS
   Arena *original = arena;
   size_t prev_size = original->buf_size;
-  char *name = original.name;
+  char *name = original->name;
 #endif
 
   // Build another arena on this one if it's full, and use it instead.

@@ -1,9 +1,9 @@
 #ifndef STRUTIL_INCLUDE
 #define STRUTIL_INCLUDE
 
-#include "../arena.h/arena.h"
-#include "../list.h/list.h"
-#include "../memdebug.h/memdebug.h"
+#include "arena.h"
+#include "list.h"
+#include "memdebug.h"
 
 #include <ctype.h>
 #include <inttypes.h>
@@ -145,7 +145,7 @@ static inline String String_toLower(String str);
 // #define                String_regexCompile(expr)
 // static inline bool     String_regexMatches(String str, CompiledRegEx regex);
 
-#include "../apaz-variadic.h"
+#include "variadic.h"
 #define STRING_DESTROY_(str) _String_destroy(str, __LINE__, __func__, __FILE__);
 #define STRING_DESTROY(...) __EVAL(__MAP(STRING_DESTROY_, __VA_ARGS__))
 
@@ -307,15 +307,17 @@ static inline bool String_contains(String str, char *subseq) {
 }
 
 static inline String String_toUpper(String str) {
+  String original = str;
   for (; *str; ++str)
     *str = toupper(*str);
-  return str;
+  return original;
 }
 
 static inline String String_toLower(String str) {
+  String original = str;
   for (; *str; ++str)
     *str = tolower(*str);
-  return str;
+  return original;
 }
 
 /****************/
