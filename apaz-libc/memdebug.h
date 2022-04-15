@@ -483,9 +483,11 @@ memdebug_realloc(void* ptr, size_t n, size_t line, const char* func, const char*
     MEMDEBUG_LOCK_MUTEX;
 
     // Check to make sure the allocation exists, and keep track of the location
-    bool removed = alloc_remove(ptr);
-    if (ptr != NULL && !removed) {
-        mempanic(ptr, "Tried to realloc() an invalid pointer.", line, func, file);
+    if (ptr != NULL){
+        bool removed = alloc_remove(ptr);
+        if (!removed) {
+            mempanic(ptr, "Tried to realloc() an invalid pointer.", line, func, file);
+        }
     }
 
     // Call realloc()
