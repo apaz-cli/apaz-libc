@@ -311,7 +311,7 @@
     List_##type##_destroy(list);                                               \
     return nl;                                                                 \
   }                                                                            \
-  static inline List_##map_type List_##type##_map_to_##map_type##_extra(         \
+  static inline List_##map_type List_##type##_map_to_##map_type##_extra(       \
       List_##type list, map_type (*mapper)(type, void *), void *extra_data) {  \
     List_##map_type nl = List_##map_type##_new_len(List_##type##_len(list));   \
     size_t len = List_##type##_len(list);                                      \
